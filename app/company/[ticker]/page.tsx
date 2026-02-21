@@ -120,6 +120,7 @@ async function AsyncPageContent({
               fundamentalCompositeMonthly={valuation?.fundamentalCompositeMonthly || []}
               prices={valuation?.prices || []}
               multipleLabel={valuation?.multipleLabel}
+              windowSize={data.dynamicWindow || 36}
             />
           </section>
 

@@ -13,14 +13,16 @@ import {
   ReferenceLine,
 } from "recharts";
 import { TrendingUp, DollarSign } from "lucide-react";
-import { calculateZScores } from "@/lib/helpers/math";
+import { calculateZScores, rollingZScore } from "@/lib/helpers/math";
+import { detectResidualBottoms, rollingRegressionResiduals } from "@/lib/helpers/valLagHelper";
 
 type Props = {
-  dates: string[]; // monthly date strings
+  dates: string[];
   evEBITDAMonthly: number[];
   fundamentalCompositeMonthly: number[];
   prices: number[];
   multipleLabel?: string;
+  windowSize: number;
 };
 
 type ChartDataPoint = {
@@ -28,19 +30,23 @@ type ChartDataPoint = {
   evEbitda: number;
   fundamental: number;
   price: number;
-  // Z-score normalized values
-  zEvEbitda: number;
-  zFundamental: number;
   zPrice: number;
+  zLogMultiple: number;
+  zFundamental: number;
+  zResidual: number;
+  bottomSignal: boolean;
 };
 
+
 const ValuationLagChart: React.FC<Props> = ({
-  dates, 
+  dates,
   evEBITDAMonthly,
   fundamentalCompositeMonthly,
   prices,
   multipleLabel = "EV / EBITDA",
+  windowSize,
 }) => {
+
   const length = Math.min(
     dates.length,
     evEBITDAMonthly.length,
@@ -48,9 +54,25 @@ const ValuationLagChart: React.FC<Props> = ({
     prices.length
   );
 
+  // Log transform multiple
+  const logMultiple = evEBITDAMonthly.map((m) =>
+    m > 0 && Number.isFinite(m) ? Math.log(m) : NaN
+  );
+
+  // Z-scores (levels)
   const zPrices = calculateZScores(prices);
-  const zEvEbitda = calculateZScores(evEBITDAMonthly);
+  const zLogMultiple = calculateZScores(logMultiple);
   const zFundamental = calculateZScores(fundamentalCompositeMonthly);
+
+  // Regression residuals
+  const residuals = rollingRegressionResiduals(
+    fundamentalCompositeMonthly,
+    logMultiple,
+    windowSize
+  );
+
+  const zResidual = rollingZScore(residuals, windowSize);
+  const bottomSignal = detectResidualBottoms(zResidual);
 
   const data: ChartDataPoint[] = [];
 
@@ -60,21 +82,52 @@ const ValuationLagChart: React.FC<Props> = ({
       evEbitda: evEBITDAMonthly[i],
       fundamental: fundamentalCompositeMonthly[i],
       price: prices[i],
-      zEvEbitda: zEvEbitda[i],
-      zFundamental: zFundamental[i],
       zPrice: zPrices[i],
+      zLogMultiple: zLogMultiple[i],
+      zFundamental: zFundamental[i],
+      zResidual: zResidual[i],
+      bottomSignal: bottomSignal[i],
     });
   }
 
   const latest = data[data.length - 1];
-  const bias = latest ? latest.zFundamental - latest.zEvEbitda : 0;
+  const bias = latest?.zResidual ?? 0;
 
   const getVerdict = (b: number) => {
-    if (b > 1.5) return { label: "Significant Undervaluation", tint: "text-emerald-500", bg: "bg-emerald-500/10", border: "border-emerald-500/20" };
-    if (b > 0.5) return { label: "Modest Undervaluation", tint: "text-emerald-500", bg: "bg-emerald-500/5", border: "border-emerald-500/10" };
-    if (b < -1.5) return { label: "Significant Overvaluation", tint: "text-rose-500", bg: "bg-rose-500/10", border: "border-rose-500/20" };
-    if (b < -0.5) return { label: "Modest Overvaluation", tint: "text-rose-500", bg: "bg-rose-500/5", border: "border-rose-500/10" };
-    return { label: "Fair Value (Statistical)", tint: "text-text-primary", bg: "bg-bg-main", border: "border-border-subtle" };
+    if (b < -1.5)
+      return {
+        label: "Significant Undervaluation",
+        tint: "text-emerald-500",
+        bg: "bg-emerald-500/10",
+        border: "border-emerald-500/20",
+      };
+    if (b < -0.5)
+      return {
+        label: "Modest Undervaluation",
+        tint: "text-emerald-500",
+        bg: "bg-emerald-500/5",
+        border: "border-emerald-500/10",
+      };
+    if (b > 1.5)
+      return {
+        label: "Significant Overvaluation",
+        tint: "text-rose-500",
+        bg: "bg-rose-500/10",
+        border: "border-rose-500/20",
+      };
+    if (b > 0.5)
+      return {
+        label: "Modest Overvaluation",
+        tint: "text-rose-500",
+        bg: "bg-rose-500/5",
+        border: "border-rose-500/10",
+      };
+    return {
+      label: "Fair Value (Statistical)",
+      tint: "text-text-primary",
+      bg: "bg-bg-main",
+      border: "border-border-subtle",
+    };
   };
 
   const verdict = getVerdict(bias);
@@ -92,11 +145,16 @@ const ValuationLagChart: React.FC<Props> = ({
           <h3 className="text-3xl font-display font-black tracking-tighter text-text-primary">
             Asset Dynamics
           </h3>
+          <p className="text-text-secondary text-sm font-medium mt-1">
+            Analyzing standard deviation divergences between valuation multiples and fundamental performance.
+          </p>
         </div>
 
-        <div className={`px-4 py-2 rounded-2xl border ${verdict.bg} ${verdict.border} text-right`}>
-          <span className="block text-[9px] font-black text-text-muted uppercase tracking-wider mb-0.5">Statistical Verdict</span>
-          <span className={`text-sm font-black uppercase tracking-tight ${verdict.tint}`}>
+        <div className={`px-5 py-3 rounded-[20px] border ${verdict.bg} ${verdict.border} text-right flex flex-col justify-center`}>
+          <span className="block text-[10px] font-black text-text-muted uppercase tracking-widest mb-1">
+            Residual Verdict
+          </span>
+          <span className={`text-base font-black uppercase tracking-tight ${verdict.tint}`}>
             {verdict.label}
           </span>
         </div>
@@ -124,39 +182,44 @@ const ValuationLagChart: React.FC<Props> = ({
               tickFormatter={(v) => v > 0 ? `+${v}σ` : `${v}σ`}
             />
 
-            <Tooltip 
-              contentStyle={{ 
-                backgroundColor: "transparent", 
+            <Tooltip
+              contentStyle={{
+                backgroundColor: "transparent",
                 borderColor: "var(--border-subtle)",
                 borderRadius: "20px",
                 padding: "16px",
                 fontSize: "12px",
-                boxShadow: "var(--card-shadow)"
+                boxShadow: "var(--card-shadow)",
               }}
               itemStyle={{ fontWeight: 700, color: "var(--text-primary)" }}
               labelStyle={{ color: "var(--text-muted)", fontWeight: 800, marginBottom: "8px", textTransform: "uppercase", fontSize: "10px" }}
               cursor={{ stroke: "var(--border-subtle)", strokeWidth: 1.5, strokeDasharray: "4 4" }}
               formatter={(value: any, name?: string, props?: any) => {
                 const { payload } = props;
-                const numValue = Number(value);
-                const sigma = isNaN(numValue) ? "N/A" : (numValue >= 0 ? `+${numValue.toFixed(1)}` : numValue.toFixed(1));
-                
-                if (name === "Price") {
-                  const val = Number(payload.price);
-                  return [isNaN(val) ? "--" : `$${val.toFixed(2)} (${sigma}σ)`, name];
+                const numVal = Number(value);
+                const prefix = numVal > 0 ? "+" : "";
+                const sigmaStr = isNaN(numVal) ? "--" : `${prefix}${numVal.toFixed(2)}σ`;
+
+                if (name === "Price (Z)") {
+                  const rawPrice = payload.price;
+                  return [`$${rawPrice?.toFixed(2)} (${sigmaStr})`, "Price"];
                 }
-                if (name === multipleLabel) {
-                  const val = Number(payload.evEbitda);
-                  return [isNaN(val) ? "--" : `${val.toFixed(2)}x (${sigma}σ)`, name];
+                if (name === `${multipleLabel} (Log Z)`) {
+                  const rawMult = payload.evEbitda;
+                  return [`${rawMult?.toFixed(1)}x (${sigmaStr})`, multipleLabel];
                 }
-                if (name === "Fundamentals") {
-                  const val = Number(payload.fundamental);
-                  return [isNaN(val) ? "--" : `${(val * 100).toFixed(1)}% (${sigma}σ)`, name];
+                if (name === "Fundamentals (Z)") {
+                  const rawFund = payload.fundamental;
+                  return [`${(rawFund * 100).toFixed(1)}% (${sigmaStr})`, "Fundamentals"];
                 }
-                return [value, name];
+                if (name === "Valuation Residual (Z)") {
+                  return [sigmaStr, "Decoupling Residual"];
+                }
+
+                return [sigmaStr, name];
               }}
             />
-            
+
             <Legend 
               verticalAlign="top" 
               align="right" 
@@ -173,37 +236,66 @@ const ValuationLagChart: React.FC<Props> = ({
               label={{ value: 'PERIOD MEAN', position: 'right', fill: 'var(--text-muted)', fontSize: 9, fontWeight: 800 }} 
             />
 
+            {/* Price */}
             <Line
               type="monotone"
               dataKey="zPrice"
-              stroke="var(--text-primary)"
+              stroke="var(--text-muted)"
+              strokeWidth={2}
+              dot={false}
+              activeDot={{ r: 4, fill: "var(--text-muted)", strokeWidth: 0 }}
+              name="Price (Z)"
+              animationDuration={2000}
+            />
+
+            {/* Log Multiple */}
+            <Line
+              type="monotone"
+              dataKey="zLogMultiple"
+              stroke="var(--color-brand)"
               strokeWidth={2}
               strokeOpacity={0.6}
               dot={false}
-              activeDot={{ r: 4, fill: "var(--text-primary)", strokeWidth: 0 }}
-              name="Price"
+              activeDot={{ r: 4, fill: "var(--color-brand)", strokeWidth: 0 }}
+              name={`${multipleLabel} (Log Z)`}
               animationDuration={2000}
             />
 
-            <Line
-              type="monotone"
-              dataKey="zEvEbitda"
-              stroke="var(--color-brand)"
-              strokeWidth={3}
-              dot={false}
-              activeDot={{ r: 6, fill: "var(--color-brand)", strokeWidth: 0 }}
-              name={multipleLabel}
-              animationDuration={2000}
-            />
-
+            {/* Fundamentals */}
             <Line
               type="monotone"
               dataKey="zFundamental"
               stroke="#10b981"
               strokeWidth={3}
+              strokeOpacity={0.6}
               dot={false}
-              activeDot={{ r: 6, fill: "#10b981", strokeWidth: 0 }}
-              name="Fundamentals"
+              activeDot={{ r: 4, fill: "#10b981", strokeWidth: 0 }}
+              name="Fundamentals (Z)"
+              animationDuration={2000}
+            />
+
+            {/* Residual (true decoupling) */}
+            <Line
+              type="monotone"
+              dataKey="zResidual"
+              stroke="var(--color-brand)"
+              strokeWidth={4}
+              activeDot={{ r: 7, fill: "var(--color-brand)", strokeWidth: 0 }}
+              dot={(props: any) => {
+                const { payload } = props;
+                if (payload.bottomSignal) {
+                  return (
+                    <circle
+                      cx={props.cx}
+                      cy={props.cy}
+                      r={6}
+                      fill="#10b981"
+                    />
+                  );
+                }
+                return null;
+              }}
+              name="Valuation Residual (Z)"
               animationDuration={2000}
             />
           </LineChart>
@@ -214,19 +306,18 @@ const ValuationLagChart: React.FC<Props> = ({
         <div className="flex gap-8 items-center">
           <div className="flex flex-col gap-1 min-w-[140px]">
             <div className="flex items-center gap-2">
-              <DollarSign size={12} className="text-text-muted" />
               <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">Analysis</span>
             </div>
             <span className={`text-xl font-display font-black tracking-tight ${verdict.tint}`}>
-              {Math.abs(bias).toFixed(1)}σ {bias > 0 ? 'Lag' : 'Lead'}
+              {bias.toFixed(2)}σ {bias < 0 ? "Undervalued" : "Overvalued"}
             </span>
           </div>
           <div className="w-px h-12 bg-border-subtle" />
           <p className="text-sm text-text-secondary leading-relaxed font-semibold">
-            The market price is currently decoupled from fundamental progression by {Math.abs(bias).toFixed(2)} standard deviations. 
-            {bias > 1.5 ? " This represents a severe statistical undervaluation relative to historical norms." : 
-             bias < -1.5 ? " This represents a severe statistical overvaluation relative to historical norms." :
-             " The divergence is within standard volatility bounds."}
+            The market multiple is currently decoupled from its fundamentally justified value by {Math.abs(bias).toFixed(2)} standard deviations.
+            {bias < -1.5 ? " This represents a severe statistical undervaluation relative to historical norms." : 
+             bias > 1.5 ? " This represents a severe statistical overvaluation relative to historical norms." :
+             " The divergence is within standard mathematical volatility bounds."}
           </p>
         </div>
       </div>

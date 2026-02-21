@@ -1,37 +1,41 @@
 import { ValuationLagDiagnostics } from "@/types/financials";
-import { applyRollingWindow, calculateZScores } from "./helpers/math";
+import { applyRollingWindow, calculateZScores, rollingZScore } from "./helpers/math";
 import { calculateSlope } from "./helpers/slopeCalculation";
+import { detectResidualBottoms, rollingRegressionResiduals } from "./helpers/valLagHelper";
 
 export function computeValuationLag(
-  multipleSeries: number[], // either EV/EBITDA or EV/Revenue
+  monthlyPrices: number[],
+  multipleSeries: number[],
   fundamentalCompositeSeries: number[],
   windowSize: number,
   multipleLabel: string = "EV / EBITDA"
 ): ValuationLagDiagnostics & { multipleLabel: string } {
 
-  const multipleWindow = applyRollingWindow(
-    multipleSeries,
-    windowSize * 3
+  // Log-transform multiple (critical for stability)
+  const logMultiple = multipleSeries.map(m =>
+    m > 0 && Number.isFinite(m) ? Math.log(m) : NaN
   );
 
-  const fundamentalWindow = applyRollingWindow(
+  // Rolling regression residuals
+  const residuals = rollingRegressionResiduals(
     fundamentalCompositeSeries,
-    windowSize * 3
+    logMultiple,
+    windowSize
   );
 
-  // Decoupling Bias (Fundamentals - Price)
-  // Positive = Fundamentals lead price (Undervalued)
-  // Negative = Price leads fundamentals (Overvalued)
-  const spreadSeries = fundamentalWindow.map(
-    (f, i) => f - multipleWindow[i]
-  );
+  // Rolling z-score of residuals (true decoupling signal)
+  const zResidual = rollingZScore(residuals, windowSize);
+  const bottomSignal = detectResidualBottoms(zResidual);
+  const rawBias = zResidual[zResidual.length - 1];
 
-  const zSpread = calculateZScores(spreadSeries);
+  // Trend confirmation (light weighting)
+  const multipleSlope = calculateSlope(logMultiple);
+  const fundamentalSlope = calculateSlope(fundamentalCompositeSeries);
 
-  const bias = zSpread[zSpread.length - 1];
+  const slopeDivergence = fundamentalSlope - multipleSlope;
 
-  const multipleSlope = calculateSlope(multipleWindow);
-  const fundamentalSlope = calculateSlope(fundamentalWindow);
+  // Keep weight small so it enhances but doesn't dominate
+  const adjustedBias = rawBias * (1 + 0.15 * slopeDivergence);
 
   let state:
     | "significant-undervaluation"
@@ -40,17 +44,18 @@ export function computeValuationLag(
     | "overvalued"
     | "significant-overvaluation";
 
-  if (bias > 1.5) state = "significant-undervaluation";
-  else if (bias > 0.5) state = "undervalued";
-  else if (bias < -1.5) state = "significant-overvaluation";
-  else if (bias < -0.5) state = "overvalued";
+  if (adjustedBias < -1.5) state = "significant-undervaluation";
+  else if (adjustedBias < -0.5) state = "undervalued";
+  else if (adjustedBias > 1.5) state = "significant-overvaluation";
+  else if (adjustedBias > 0.5) state = "overvalued";
   else state = "fair-value";
 
   return {
     multipleSlope,
     fundamentalSlope,
-    score: bias, // Score is now the actual sigma decoupling
+    score: adjustedBias,
     state,
-    multipleLabel
+    multipleLabel,
+    bottomSignal
   };
 }

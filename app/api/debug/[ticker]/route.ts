@@ -174,19 +174,19 @@ export async function GET(
         windowedValues: yoyGrowthWindow.length,
       },
 
-      // Raw quarterly (last 8 for brevity)
+      // Raw quarterly 
       rawQuarterly: {
-        revenues: revenues.slice(-8),
-        operatingIncome: operatingIncome.slice(-8),
-        freeCashFlow: freeCashFlow.slice(-8),
-        investedCapital: investedCapital.slice(-8),
+        revenues: revenues,
+        operatingIncome: operatingIncome,
+        freeCashFlow: freeCashFlow,
+        investedCapital: investedCapital,
       },
 
-      // TTM (last 8)
+      // TTM 
       ttm: {
-        revenue: revenueTTM.slice(-8),
-        operatingIncome: operatingIncomeTTM.slice(-8),
-        fcf: fcfTTM.slice(-8),
+        revenue: revenueTTM,
+        operatingIncome: operatingIncomeTTM,
+        fcf: fcfTTM,
       },
 
       // Derived series (windowed)

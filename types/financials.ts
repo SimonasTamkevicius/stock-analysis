@@ -35,4 +35,5 @@ export interface ValuationLagDiagnostics {
     | "fair-value"
     | "overvalued"
     | "significant-overvaluation";
+  bottomSignal: boolean[];
 }

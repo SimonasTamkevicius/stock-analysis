@@ -84,14 +84,42 @@ export function buildEVtoEBITDA(
 
   const length = Math.min(evSeries.length, ebitdaSeries.length);
 
+  const rawMultiples: number[] = [];
+
+  for (let i = 0; i < length; i++) {
+    const ev = evSeries[i];
+    const ebitda = ebitdaSeries[i];
+
+    if (
+      Number.isFinite(ev) &&
+      Number.isFinite(ebitda) &&
+      ebitda > 0
+    ) {
+      rawMultiples.push(ev / ebitda);
+    }
+  }
+
+  const sorted = rawMultiples.sort((a, b) => a - b);
+
+  const p90 =
+    sorted.length > 0
+      ? sorted[Math.floor(sorted.length * 0.9)]
+      : 50;
+
+  const penaltyMultiple = p90 * 1.5;
+
   const result: number[] = [];
 
   for (let i = 0; i < length; i++) {
     const ev = evSeries[i];
     const ebitda = ebitdaSeries[i];
 
-    if (!ebitda || ebitda <= 0 || isNaN(ebitda)) {
-      result.push(NaN);
+    if (
+      !Number.isFinite(ev) ||
+      !Number.isFinite(ebitda) ||
+      ebitda <= 0
+    ) {
+      result.push(penaltyMultiple);
     } else {
       result.push(ev / ebitda);
     }
@@ -130,16 +158,35 @@ export function buildEVtoRevenue(
   revenueSeries: number[]
 ): number[] {
   const length = Math.min(evSeries.length, revenueSeries.length);
+  
+  const rawMultiples: number[] = [];
+  for (let i = 0; i < length; i++) {
+    const rev = revenueSeries[i];
+    if (rev > 0 && Number.isFinite(rev)) {
+      rawMultiples.push(evSeries[i] / rev);
+    }
+  }
+
+  const historicalPositiveMultiples = rawMultiples.filter((v) => v > 0);
+  const maxMultiple = historicalPositiveMultiples.length > 0
+    ? Math.max(...historicalPositiveMultiples)
+    : 30; // Fallback if no positive history
+
+  const penaltyMultiple = maxMultiple * 1.5;
+
   const result: number[] = [];
+  let previousValidMultiple: number | null = null;
 
   for (let i = 0; i < length; i++) {
     const ev = evSeries[i];
     const revenue = revenueSeries[i];
 
-    if (!revenue || revenue <= 0 || isNaN(revenue)) {
-      result.push(NaN);
+    if (!revenue || revenue <= 0 || !Number.isFinite(revenue)) {
+      result.push(previousValidMultiple ?? penaltyMultiple);
     } else {
-      result.push(ev / revenue);
+      const validMultiple = ev / revenue;
+      result.push(validMultiple);
+      previousValidMultiple = validMultiple;
     }
   }
 
@@ -211,4 +258,65 @@ export function forwardFillQuarterlyToMonthly(
 
     return quarterlySeries[currentQuarterIndex] ?? quarterlySeries[quarterlySeries.length - 1];
   });
+}
+
+export function detectResidualBottoms(
+  residuals: number[],
+  threshold = -1.5
+) {
+  const signals: boolean[] = new Array(residuals.length).fill(false);
+
+  for (let i = 2; i < residuals.length; i++) {
+    const r0 = residuals[i - 2];
+    const r1 = residuals[i - 1];
+    const r2 = residuals[i];
+
+    const isLocalMin = r0 > r1 && r1 < r2;
+    const isExtreme = r1 < threshold;
+
+    if (isLocalMin && isExtreme) {
+      signals[i - 1] = true; // bottom detected at r1
+    }
+  }
+
+  return signals;
+}
+
+export function rollingRegressionResiduals(
+  fundamentals: number[],
+  logMultiple: number[],
+  windowSize: number
+) {
+  const residuals: number[] = new Array(fundamentals.length).fill(NaN);
+
+  for (let i = 0; i < fundamentals.length; i++) {
+    const startIndex = Math.max(0, i - windowSize + 1);
+    const fWindow = fundamentals.slice(startIndex, i + 1);
+    const mWindow = logMultiple.slice(startIndex, i + 1);
+
+    if (fWindow.length < 2) {
+      residuals[i] = 0;
+      continue;
+    }
+
+    const currentWindowSize = fWindow.length;
+    const meanF = fWindow.reduce((a, b) => a + b, 0) / currentWindowSize;
+    const meanM = mWindow.reduce((a, b) => a + b, 0) / currentWindowSize;
+
+    let cov = 0;
+    let varF = 0;
+
+    for (let j = 0; j < currentWindowSize; j++) {
+      cov += (fWindow[j] - meanF) * (mWindow[j] - meanM);
+      varF += (fWindow[j] - meanF) ** 2;
+    }
+
+    const beta = varF !== 0 ? cov / varF : 0;
+    const alpha = meanM - beta * meanF;
+
+    const predicted = alpha + beta * fundamentals[i];
+    residuals[i] = logMultiple[i] - predicted;
+  }
+
+  return residuals;
 }

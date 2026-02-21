@@ -1,15 +1,7 @@
 "use client";
 
 import React from "react";
-import {
-  Radar,
-  RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  ResponsiveContainer,
-} from "recharts";
-import { Cpu, ShieldCheck, Zap, AlertTriangle, Scale } from "lucide-react";
+import { Cpu, ShieldCheck, Zap, AlertTriangle, Scale, Activity, DollarSign } from "lucide-react";
 
 interface DecisionEngineVizProps {
   result: {
@@ -19,6 +11,20 @@ interface DecisionEngineVizProps {
     valuation: number;
     finalScore: number;
     signal: "strong_buy" | "buy" | "neutral" | "avoid";
+    breakdown: {
+      fundamentals: {
+        score: number;
+        weight: number;
+        components: {
+          growth: { raw: number; weight: number; contribution: number };
+          structural: { raw: number; weight: number; contribution: number };
+          balance: { raw: number; weight: number; contribution: number };
+        };
+        riskMultiplier: number;
+        riskAdjustedScore: number;
+      };
+      valuation: { score: number; weight: number; contribution: number };
+    };
   };
 }
 
@@ -42,7 +48,7 @@ const signalConfigs = {
   neutral: {
     label: "Neutral",
     color: "text-text-muted",
-    bg: "bg-bg-main",
+    bg: "bg-black/5 dark:bg-white/5",
     border: "border-border-subtle",
     icon: Scale,
     description: "The algorithm suggests a hold. Fundamentals and price are in equilibrium."
@@ -57,101 +63,169 @@ const signalConfigs = {
   }
 };
 
+function DivergingBar({
+  label,
+  weight,
+  value,
+  max,
+  invert = false
+}: {
+  label: string;
+  weight: string;
+  value: number;
+  max: number;
+  invert?: boolean;
+}) {
+  const percentage = Math.min(100, Math.max(0, (Math.abs(value) / max) * 100));
+
+  // If invert=true, negative values are treated as positive/good
+  const isPositive = invert ? value <= 0 : value >= 0;
+
+  return (
+    <div className="flex flex-col gap-1.5 w-full">
+      <div className="flex justify-between items-center text-[11px] uppercase tracking-wider">
+        <span className="font-bold text-text-primary">
+          {label}{" "}
+          <span className="text-text-muted opacity-70">({weight})</span>
+        </span>
+        <span
+          className={`font-mono font-bold drop-shadow-sm ${
+            isPositive ? "text-emerald-500" : "text-rose-500"
+          }`}
+        >
+          {value > 0 ? "+" : ""}
+          {value.toFixed(2)}
+        </span>
+      </div>
+
+      <div className="relative h-1.5 w-full bg-black/5 dark:bg-white/5 border border-border-subtle/50 rounded-full overflow-hidden shadow-inner">
+        <div className="absolute top-0 bottom-0 left-1/2 w-px bg-border-subtle z-10" />
+
+        <div
+          className={`absolute top-0 bottom-0 rounded-full transition-all duration-1000 ease-out ${
+            isPositive
+              ? "bg-gradient-to-l from-emerald-400 to-emerald-500 shadow-[0_0_8px_rgba(52,211,153,0.4)]"
+              : "bg-gradient-to-r from-rose-400 to-rose-500 shadow-[0_0_8px_rgba(251,113,133,0.4)]"
+          }`}
+          style={{
+            width: `${percentage / 2}%`,
+            left: value >= 0 ? "50%" : `${50 - percentage / 2}%`
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function DecisionEngineViz({ result }: DecisionEngineVizProps) {
   const config = signalConfigs[result.signal];
   const Icon = config.icon;
+  const bd = result.breakdown;
 
-  const chartData = [
-    { subject: "Growth", A: Math.max(0.1, result.growth + 0.5), full: 1 },
-    { subject: "Structure", A: Math.max(0.1, result.structural + 0.5), full: 1 },
-    { subject: "Solvency", A: Math.max(0.1, result.balance + 0.5), full: 1 },
-    { subject: "Value", A: Math.max(0.1, result.valuation + 0.5), full: 1 },
-  ];
+  if (!bd) {
+    return (
+      <div className="glass-card animate-entrance h-full p-6 text-center text-text-muted text-sm">
+        Please refresh the data to see the new Decision Engine breakdown.
+      </div>
+    );
+  }
 
   return (
-    <div className="clean-card animate-entrance h-full overflow-hidden relative group">
+    <div className="glass-card animate-entrance h-full overflow-hidden relative group flex flex-col p-6 lg:p-8">
       {/* Decorative Gradient Background */}
-      <div className={`absolute top-0 right-0 w-64 h-64 opacity-[0.03] transition-opacity group-hover:opacity-[0.05] blur-3xl rounded-full -mr-20 -mt-20 ${config.bg.replace('/10', '')}`} />
+      <div className={`absolute top-0 right-0 w-80 h-80 opacity-20 transition-opacity group-hover:opacity-30 blur-[100px] rounded-full -mr-20 -mt-20 bg-current ${config.color}`} />
 
-      <div className="relative z-10 flex flex-col h-full">
-        <div className="flex justify-between items-start mb-8">
-          <div className="flex flex-col gap-1">
+      <div className="relative z-10 flex flex-col flex-1">
+        <div className="flex justify-between items-start mb-6 gap-4">
+          <div className="flex flex-col gap-1 shrink-0">
             <div className="flex items-center gap-2 mb-1">
-              <Cpu size={16} className="text-brand" />
-              <span className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">
+              <Cpu size={18} className={config.color} />
+              <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${config.color}`}>
                 Algorithm Verdict
               </span>
             </div>
-            <h3 className="text-3xl font-display font-black tracking-tighter text-text-primary leading-tight">
+            <h3 className="text-3xl lg:text-4xl font-display font-black tracking-tighter text-text-primary drop-shadow-md leading-tight">
               Decision <br />Engine
             </h3>
           </div>
 
-          <div className={`px-4 py-3 rounded-2xl border ${config.bg} ${config.border} flex flex-col items-end`}>
+          <div className={`p-4 rounded-2xl border ${config.bg} ${config.border} flex flex-col items-end backdrop-blur-sm`}>
             <div className="flex items-center gap-2 mb-1">
-              <Icon size={14} className={config.color} />
-              <span className={`text-base font-black uppercase tracking-tight ${config.color}`}>
+              <Icon size={16} className={config.color} />
+              <span className={`text-base font-black uppercase tracking-tight ${config.color} drop-shadow-sm`}>
                 {config.label}
               </span>
             </div>
-            <span className="text-[9px] font-black text-text-muted uppercase tracking-wider">
-              Score: {(result.finalScore * 100).toFixed(0)}%
+            <span className="text-[14px] font-black text-text-muted uppercase tracking-widest mt-1">
+              Score: {(result.finalScore * 100).toFixed(2)}
             </span>
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col xl:flex-row gap-10 items-center">
-          {/* Radar Chart */}
-          <div className="w-full h-[240px] xl:w-1/2">
-            <ResponsiveContainer width="100%" height="100%">
-              <RadarChart cx="50%" cy="50%" outerRadius="70%" data={chartData}>
-                <PolarGrid stroke="var(--border-subtle)" strokeOpacity={0.4} />
-                <PolarAngleAxis 
-                  dataKey="subject" 
-                  tick={{ fill: "var(--text-muted)", fontSize: 10, fontWeight: 700 }}
-                />
-                <Radar
-                  name="Quality"
-                  dataKey="A"
-                  stroke="var(--color-brand)"
-                  fill="var(--color-brand)"
-                  fillOpacity={0.3}
-                />
-              </RadarChart>
-            </ResponsiveContainer>
-          </div>
+        <p className="text-sm text-text-secondary font-medium leading-relaxed mb-8 max-w-xs">
+          {config.description}
+        </p>
 
-          {/* Explanation */}
-          <div className="flex-1 space-y-4">
-            <p className="text-sm text-text-secondary font-semibold leading-relaxed">
-              {config.description}
-            </p>
+        {/* Breakdown Flow */}
+        <div className="flex-1 space-y-5">
+          
+          {/* Fundamentals (50%) */}
+          <div className="p-6 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-border-subtle hover:border-text-muted/30 transition-colors shadow-inner relative overflow-hidden group/card backdrop-blur-sm">
+            <div className="absolute inset-0 bg-gradient-to-br from-black/[0.03] dark:from-white/[0.03] to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-500" />
             
-            <div className="grid grid-cols-2 gap-3 mt-4">
-              <div className="p-3 rounded-xl bg-bg-main border border-border-subtle">
-                <div className="text-[9px] font-black text-text-muted uppercase tracking-widest mb-1">Momentum</div>
-                <div className="text-sm font-bold text-text-primary leading-none">
-                  {result.growth > 0 ? "Accelerating" : "Decelerating"}
+            <div className="flex justify-between items-center mb-6 relative z-10">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-black/5 dark:bg-white/5 border border-border-subtle shrink-0">
+                  <Activity size={18} className="text-text-primary" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-black text-text-primary uppercase tracking-tight leading-tight">Fundamentals</span>
+                  <span className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Weight: 50%</span>
                 </div>
               </div>
-              <div className="p-3 rounded-xl bg-bg-main border border-border-subtle">
-                <div className="text-[9px] font-black text-text-muted uppercase tracking-widest mb-1">Risk Buffer</div>
-                <div className="text-sm font-bold text-text-primary leading-none">
-                  {result.balance > 0.5 ? "Robust" : result.balance > 0 ? "Stable" : "Tight"}
-                </div>
-              </div>
+              <span className="text-lg font-mono font-black text-text-primary drop-shadow-sm">{(bd.fundamentals?.riskAdjustedScore || 0).toFixed(2)}</span>
+            </div>
+            
+            <div className="space-y-5 pl-4 border-l-2 border-border-subtle ml-2 relative z-10">
+              <DivergingBar label="Growth Momentum" weight="45%" value={bd.fundamentals?.components?.growth?.raw || 0} max={1.5} />
+              <DivergingBar label="Structural Quality" weight="35%" value={bd.fundamentals?.components?.structural?.raw || 0} max={1.5} />
+              <DivergingBar label="Balance Sheet" weight="20%" value={bd.fundamentals?.components?.balance?.raw || 0} max={1} />
+            </div>
+            
+            <div className="mt-6 pt-4 border-t border-border-subtle flex justify-between items-center text-xs relative z-10">
+              <span className="text-text-muted font-black uppercase tracking-widest text-[10px]">Risk Multiplier Hook</span>
+              <span className="font-mono font-bold text-text-primary bg-black/5 dark:bg-white/10 px-2 py-1 rounded-md border border-border-subtle/50">{(bd.fundamentals?.riskMultiplier || 1).toFixed(2)}x</span>
             </div>
           </div>
-        </div>
 
-        <div className="mt-8 pt-6 border-t border-border-subtle">
-          <div className="flex items-center justify-between text-[10px] font-bold text-text-muted uppercase tracking-widest">
-            <span>Fundamental Weight</span>
-            <span>70%</span>
+          {/* Valuation (50%) */}
+          <div className="p-6 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-border-subtle hover:border-text-muted/30 transition-colors shadow-inner relative overflow-hidden group/card backdrop-blur-sm">
+            <div className="absolute inset-0 bg-gradient-to-br from-black/[0.03] dark:from-white/[0.03] to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-500" />
+            
+            <div className="flex justify-between items-center mb-6 relative z-10">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-black/5 dark:bg-white/5 border border-border-subtle shrink-0">
+                  <DollarSign size={18} className="text-text-primary" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-black text-text-primary uppercase tracking-tight leading-tight">Valuation Signal</span>
+                  <span className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Weight: 50%</span>
+                </div>
+              </div>
+              <span className="text-lg font-mono font-black text-text-primary drop-shadow-sm">{(bd.valuation?.score || 0).toFixed(2)}</span>
+            </div>
+            
+            <div className="pl-4 border-l-2 border-border-subtle ml-2 relative z-10">
+              <DivergingBar
+                label="Valuation Lag"
+                weight="100%"
+                value={bd.valuation?.score || 0}
+                max={1}
+                invert={true}
+              />
+            </div>
           </div>
-          <div className="mt-2 h-1.5 w-full bg-bg-main rounded-full overflow-hidden border border-border-subtle">
-            <div className="h-full bg-brand rounded-full" style={{ width: '70%' }} />
-          </div>
+          
         </div>
       </div>
     </div>

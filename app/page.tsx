@@ -1,25 +1,40 @@
 import CompanyList from "./components/CompanyList";
 import PortfolioTracker from "./components/PortfolioTracker";
-import Image from "next/image";
+import SectionHeader from "./components/SectionHeader";
+import SearchStock from "./components/SearchStock";
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-bg-main p-8 md:p-12 lg:p-20">
-      <div className="max-w-7xl mx-auto space-y-20">
-        <header className="flex flex-col gap-4">
-          <div>
-            <h1 className="text-4xl md:text-5xl font-display font-black tracking-tighter text-text-primary mb-2">
-              Market Value Monitor
-            </h1>
-            <p className="text-lg text-text-secondary font-medium max-w-2xl">
-              Real-time valuation analysis tracking fundamental divergence across your covered universe.
-            </p>
-          </div>
-        </header>
-        
+    <main className="max-w-7xl mx-auto px-6 py-12 space-y-12 mb-20 animate-entrance">
+
+      {/* ── Search ── */}
+      <section>
+        <SectionHeader
+          title="Search"
+          description="Analyze any publicly traded company by entering its ticker symbol."
+        />
+        <div className="max-w-md">
+          <SearchStock />
+        </div>
+      </section>
+
+      {/* ── Coverage Universe ── */}
+      <section>
+        <SectionHeader
+          title="Coverage Universe"
+          description="Active companies ranked by decision engine score across growth, quality, risk, and valuation."
+        />
         <CompanyList />
+      </section>
+
+      {/* ── Simulation Tracker ── */}
+      <section>
+        <SectionHeader
+          title="Simulation Tracker"
+          description="Performance tracking of simulated portfolio positions."
+        />
         <PortfolioTracker />
-      </div>
+      </section>
     </main>
   );
 }

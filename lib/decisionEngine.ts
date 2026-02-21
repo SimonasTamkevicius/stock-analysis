@@ -5,6 +5,20 @@ export interface DecisionEngineResult {
   valuation: number;
   finalScore: number;
   signal: "strong_buy" | "buy" | "neutral" | "avoid";
+  breakdown: {
+    fundamentals: {
+      score: number;
+      weight: number;
+      components: {
+        growth: { raw: number; weight: number; contribution: number };
+        structural: { raw: number; weight: number; contribution: number };
+        balance: { raw: number; weight: number; contribution: number };
+      };
+      riskMultiplier: number;
+      riskAdjustedScore: number;
+    };
+    valuation: { score: number; weight: number; contribution: number };
+  };
 }
 
 function normalizeScores({
@@ -21,10 +35,10 @@ function normalizeScores({
   // trajectoryStrength.total is typically -2 to +6
   // structuralQuality.score is typically -2 to +8
   return {
-    growth: Math.max(-1, Math.min(1.5, growthScore / 4)),
-    structural: Math.max(-1, Math.min(1.5, structuralScore / 5)),
-    balance: balanceSheetRiskScore / 5, // -1 to +1 approx
-    valuation: Math.max(-2, Math.min(2, valuationLagScore)) // sigma bias
+    growthScore: Math.max(-1, Math.min(1.5, (growthScore || 0) / 4)),
+    structuralScore: Math.max(-1, Math.min(1.5, (structuralScore || 0) / 5)),
+    balanceSheetRiskScore: (balanceSheetRiskScore || 0) / 5, // -1 to +1 approx
+    valuationLagScore: Math.max(-2, Math.min(2, valuationLagScore || 0)) // sigma bias
   };
 }
 
@@ -49,24 +63,20 @@ export function runDecisionEngine({
     });
 
   const fundamentalScore =
-    0.6 * normalizedScores.growth +
-    0.4 * normalizedScores.structural;
+  0.45 * normalizedScores.growthScore +
+  0.35 * normalizedScores.structuralScore +
+  0.20 * normalizedScores.balanceSheetRiskScore;
 
-  // Multiplier should be subtle, not explosive. 
-  // A high risk (totalScore < 0) should drag fundamentals down.
-  // A safe balance (totalScore > 0) should gently lift them.
-  const riskMultiplier = 1 + (normalizedScores.balance * 0.3);
-  const riskAdjustedFundamental = fundamentalScore * Math.max(0.5, riskMultiplier);
+  const riskMultiplier = 1 + (normalizedScores.balanceSheetRiskScore * 0.25);
+  const riskAdjustedFundamental = fundamentalScore * Math.max(0.6, riskMultiplier);
 
-  // Valuation weight increased to 40% to prevent "priced-in" neglect
-  // We use the new sigma-based score directly
-  const valPenalty = normalizedScores.valuation;
-  
+  // Compress extreme valuation lag
+  const valuationSignal = Math.tanh(normalizedScores.valuationLagScore);
+
   let finalScore =
-    0.6 * riskAdjustedFundamental +
-    0.4 * valPenalty;
+    0.5 * riskAdjustedFundamental +
+    0.5 * -valuationSignal;
 
-  // Cap the final score for display (98% etc)
   finalScore = Math.max(-1, Math.min(1, finalScore));
 
   let signal: DecisionEngineResult["signal"] = "neutral";
@@ -76,11 +86,29 @@ export function runDecisionEngine({
   else if (finalScore < -0.3) signal = "avoid";
 
   return {
-    growth: normalizedScores.growth,
-    structural: normalizedScores.structural,
-    balance: normalizedScores.balance,
-    valuation: normalizedScores.valuation,
+    growth: normalizedScores.growthScore,
+    structural: normalizedScores.structuralScore,
+    balance: normalizedScores.balanceSheetRiskScore,
+    valuation: normalizedScores.valuationLagScore,
     finalScore,
-    signal
+    signal,
+    breakdown: {
+      fundamentals: {
+        score: fundamentalScore,
+        weight: 0.5,
+        components: {
+          growth: { raw: normalizedScores.growthScore, weight: 0.45, contribution: 0.45 * normalizedScores.growthScore },
+          structural: { raw: normalizedScores.structuralScore, weight: 0.35, contribution: 0.35 * normalizedScores.structuralScore },
+          balance: { raw: normalizedScores.balanceSheetRiskScore, weight: 0.20, contribution: 0.20 * normalizedScores.balanceSheetRiskScore }
+        },
+        riskMultiplier: Math.max(0.6, riskMultiplier),
+        riskAdjustedScore: riskAdjustedFundamental,
+      },
+      valuation: {
+        score: valuationSignal,
+        weight: 0.5,
+        contribution: 0.5 * valuationSignal
+      }
+    }
   };
 }

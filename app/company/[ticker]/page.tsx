@@ -74,136 +74,99 @@ async function AsyncPageContent({
   const valuation = data.valuations;
 
   return (
-    <main className="max-w-7xl mx-auto px-6 py-12 space-y-12 mb-20 animate-entrance">
-      <div className="mb-4">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 text-text-muted hover:text-brand transition-colors text-sm font-bold uppercase tracking-wider group"
-        >
-          <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-          Back to Company-verse
-        </Link>
-      </div>
-      
-      {/* ── Header with Date Picker ── */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-4">
-        {trajectory?.total && (
-          <TrajectoryOverview
-            ticker={ticker.toUpperCase()}
-            total={trajectory.total}
-            growth={trajectory.growth}
-            operatingMargin={trajectory.operatingMargin}
-            fcf={trajectory.fcf}
-            capitalEfficiency={trajectory.capitalEfficiency}
+    <main className="max-w-7xl mx-auto px-6 pt-2 pb-16 animate-entrance">
+      {/* Back link */}
+      <Link
+        href="/"
+        className="inline-flex items-center gap-1.5 text-text-muted hover:text-brand transition-colors text-[10px] font-bold uppercase tracking-widest group"
+      >
+        <ArrowLeft size={11} className="group-hover:-translate-x-1 transition-transform" />
+        Universe
+      </Link>
+
+      {/* ── Hero: Decision Engine ── */}
+      {data.decisionEngineResult && (
+        <div className="mt-2">
+          <DecisionEngineViz result={data.decisionEngineResult} ticker={ticker.toUpperCase()} />
+        </div>
+      )}
+
+      {/* ── Main Content: 2-Column Layout ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4 items-start">
+        {/* Left Column (Charts & Trading) */}
+        <div className="lg:col-span-2 space-y-4">
+          <ValuationLagChart
+            dates={valuation?.dates || []}
+            evEBITDAMonthly={valuation?.evEBITDAMonthly || []}
+            fundamentalCompositeMonthly={valuation?.fundamentalCompositeMonthly || []}
+            prices={valuation?.prices || []}
+            multipleLabel={valuation?.multipleLabel}
+            windowSize={data.dynamicWindow || 36}
           />
-        )}
-        <div className="lg:mb-10 min-w-[320px]">
-          <DateRangePicker />
-        </div>
-      </div>
-
-      {/* ── Main Analysis Grid ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-        
-        {/* Left/Middle Columns: Charts */}
-        <div className="lg:col-span-2 space-y-12">
           
-          {/* Valuation Section */}
-          <section>
-            <SectionHeader
-              title="Valuation Analysis"
-              description="Historical analysis of valuation multiples relative to fundamental performance."
-            />
-            <ValuationLagChart
-              dates={valuation?.dates || []}
-              evEBITDAMonthly={valuation?.evEBITDAMonthly || []}
-              fundamentalCompositeMonthly={valuation?.fundamentalCompositeMonthly || []}
-              prices={valuation?.prices || []}
-              multipleLabel={valuation?.multipleLabel}
-              windowSize={data.dynamicWindow || 36}
-            />
-          </section>
+          <TradeSimulator 
+            ticker={ticker}
+            currentPrice={valuation?.prices ? valuation.prices[valuation.prices.length - 1] : 0}
+            dates={valuation?.dates || []}
+            prices={valuation?.prices || []}
+          />
 
-           <section>
-            <TradeSimulator 
-              ticker={ticker}
-              currentPrice={valuation?.prices ? valuation.prices[valuation.prices.length - 1] : 0}
-              dates={valuation?.dates || []}
-              prices={valuation?.prices || []}
-            />
-          </section>
-
-          {/* Trajectory Grid */}
-          <section>
-            <SectionHeader
-              title="Trajectory Momentum"
-              description="Directional analysis of core financial pillars. We measure the slope of each KPI over a trailing window to determine if the business is structurally improving or deteriorating."
-            />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {trajectory?.growth && (
-                <TrajectoryChart
-                  title="Growth Momentum"
-                  windowValues={trajectory.growth.windowValues ?? []}
-                  regressionLine={trajectory.growth.regressionLine ?? []}
-                  score={trajectory.growth.score}
-                  state={trajectory.growth.state}
-                />
-              )}
-              {trajectory?.operatingMargin && (
-                <TrajectoryChart
-                  title="Operating Margins"
-                  windowValues={trajectory.operatingMargin.windowValues ?? []}
-                  regressionLine={trajectory.operatingMargin.regressionLine ?? []}
-                  score={trajectory.operatingMargin.score}
-                  state={trajectory.operatingMargin.state}
-                />
-              )}
-              {trajectory?.fcf && (
-                <TrajectoryChart
-                  title="FCF Trajectory"
-                  windowValues={trajectory.fcf.windowValues ?? []}
-                  regressionLine={trajectory.fcf.regressionLine ?? []}
-                  score={trajectory.fcf.score}
-                  state={trajectory.fcf.state}
-                />
-              )}
-              {trajectory?.capitalEfficiency && (
-                <TrajectoryChart
-                  title="Capital Efficiency"
-                  windowValues={trajectory.capitalEfficiency.windowValues ?? []}
-                  regressionLine={trajectory.capitalEfficiency.regressionLine ?? []}
-                  score={trajectory.capitalEfficiency.score}
-                  state={trajectory.capitalEfficiency.state}
-                  formatAsPercent={false}
-                />
-              )}
-            </div>
-          </section>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {trajectory?.growth && (
+              <TrajectoryChart
+                title="Growth Momentum"
+                windowValues={trajectory.growth.windowValues ?? []}
+                regressionLine={trajectory.growth.regressionLine ?? []}
+                score={trajectory.growth.score}
+                state={trajectory.growth.state}
+              />
+            )}
+            {trajectory?.operatingMargin && (
+              <TrajectoryChart
+                title="Operating Margins"
+                windowValues={trajectory.operatingMargin.windowValues ?? []}
+                regressionLine={trajectory.operatingMargin.regressionLine ?? []}
+                score={trajectory.operatingMargin.score}
+                state={trajectory.operatingMargin.state}
+              />
+            )}
+            {trajectory?.fcf && (
+              <TrajectoryChart
+                title="FCF Trajectory"
+                windowValues={trajectory.fcf.windowValues ?? []}
+                regressionLine={trajectory.fcf.regressionLine ?? []}
+                score={trajectory.fcf.score}
+                state={trajectory.fcf.state}
+              />
+            )}
+            {trajectory?.capitalEfficiency && (
+              <TrajectoryChart
+                title="Capital Efficiency"
+                windowValues={trajectory.capitalEfficiency.windowValues ?? []}
+                regressionLine={trajectory.capitalEfficiency.regressionLine ?? []}
+                score={trajectory.capitalEfficiency.score}
+                state={trajectory.capitalEfficiency.state}
+                formatAsPercent={false}
+              />
+            )}
+          </div>
         </div>
 
-        {/* Right Column: Decisions, Quality & Risk */}
-        <div className="space-y-10">
-          <section>
-            {data.decisionEngineResult && (
-              <DecisionEngineViz result={data.decisionEngineResult} />
-            )}
-          </section>
-
-          <section>
-            <SectionHeader
-              title="Structural Quality"
-              description="Absolute calibre of the business model, measuring capital efficiency (ROIC) and cash flow conversion."
+        {/* Right Column (Sidebar Panels) */}
+        <div className="space-y-4">
+          <DateRangePicker />
+          {quality && <QualityPanel quality={quality} />}
+          {risk && <BalanceSheetRisk risk={risk} />}
+          {trajectory?.total && (
+            <TrajectoryOverview
+              ticker={ticker.toUpperCase()}
+              total={trajectory.total}
+              growth={trajectory.growth}
+              operatingMargin={trajectory.operatingMargin}
+              fcf={trajectory.fcf}
+              capitalEfficiency={trajectory.capitalEfficiency}
             />
-            {quality && <QualityPanel quality={quality} />}
-          </section>
-
-          <section>
-            <SectionHeader
-              title="Financial Fragility"
-              description="Balance sheet risk assessment, covering leverage levels, interest coverage, and liquidity."
-            />
-            {risk && <BalanceSheetRisk risk={risk} />}
-          </section>
+          )}
         </div>
       </div>
     </main>

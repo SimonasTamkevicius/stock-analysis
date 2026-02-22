@@ -47,7 +47,7 @@ export default function DebugChart({
   };
 
   return (
-    <div className="clean-card flex flex-col group/chart">
+    <div className="clean-card p-6 flex flex-col group/chart">
       <div className="flex justify-between items-start mb-6">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">

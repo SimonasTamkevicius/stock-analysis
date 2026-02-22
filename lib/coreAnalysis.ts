@@ -55,9 +55,15 @@ export function computeCompanyMetrics(
 
   const investedCapital = totalAssets.map((assets: number, i: number) => {
     const nibcl = Math.max(0, totalCurrentLiabilities[i] - shortTermDebt[i]);
-    return Math.max(1, assets - nibcl);
-  });
+    const capital = assets - nibcl;
 
+    // Reject economically invalid capital structures
+    if (!Number.isFinite(capital) || capital <= 0) {
+      return NaN;
+    }
+
+    return capital;
+  });
   const freeCashFlow = operatingCashFlow.map((ocf: number, i: number) => ocf - capex[i]);
 
   const revenueTTM = calculateTTM(revenues);
@@ -69,7 +75,22 @@ export function computeCompanyMetrics(
   const fcfMarginsTTM = fcfTTM.map((fcf, i) => fcf / (revenueTTM[i] || 1));
   
   const investedCapitalAligned = investedCapital.slice(3);
-  const roicTTM = operatingIncomeTTM.map((oi, i) => oi / (investedCapitalAligned[i] || 1));
+  const roicTTM = operatingIncomeTTM.map((oi, i) => {
+    const capital = investedCapitalAligned[i];
+
+    if (!Number.isFinite(capital) || capital <= 0) {
+      return NaN;
+    }
+
+    const roic = oi / capital;
+
+    // Clamp extreme distortions
+    if (Math.abs(roic) > 3) {
+      return NaN;
+    }
+
+    return roic;
+  });
 
   const growthScore = scoreGrowthMomentum(applyRollingWindow(yoyGrowthTTM, dynamicWindow), dynamicWindow);
   const marginResult = scoreMarginDynamics(applyRollingWindow(marginsTTM, dynamicWindow));

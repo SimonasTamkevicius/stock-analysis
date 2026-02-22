@@ -46,12 +46,12 @@ export default function DateRangePicker() {
             Presets
           </span>
         </div>
-        <div className="flex p-1.5 bg-bg-main border border-border-subtle rounded-2xl">
+        <div className="flex p-1.5 bg-bg-main border border-border-subtle rounded-xl">
           {RANGES.map((range) => (
             <button
               key={range.value}
               onClick={() => handlePresetChange(range.value)}
-              className={`flex-1 py-2 px-4 rounded-xl text-[11px] font-bold tracking-tight transition-all duration-300 ${
+              className={`flex-1 py-2 px-4 rounded-lg text-[11px] font-bold tracking-tight transition-all duration-300 ${
                 currentWindow === range.value && !startDate && !endDate
                   ? "bg-brand text-white shadow-lg shadow-brand/20 scale-105"
                   : "text-text-muted hover:text-text-primary hover:bg-surface"
@@ -78,7 +78,7 @@ export default function DateRangePicker() {
               type="month"
               value={startDate}
               onChange={(e) => updateParams({ startDate: e.target.value })}
-              className="bg-surface border border-border-subtle rounded-xl px-4 py-2.5 text-xs font-bold text-text-primary focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition-all cursor-pointer shadow-sm hover:border-text-muted/20"
+              className="bg-surface border border-border-subtle rounded-lg px-4 py-2.5 text-xs font-bold text-text-primary focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition-all cursor-pointer shadow-sm hover:border-text-muted/20"
             />
           </div>
           <div className="flex flex-col gap-2">
@@ -87,7 +87,7 @@ export default function DateRangePicker() {
               type="month"
               value={endDate}
               onChange={(e) => updateParams({ endDate: e.target.value })}
-              className="bg-surface border border-border-subtle rounded-xl px-4 py-2.5 text-xs font-bold text-text-primary focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition-all cursor-pointer shadow-sm hover:border-text-muted/20"
+              className="bg-surface border border-border-subtle rounded-lg px-4 py-2.5 text-xs font-bold text-text-primary focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition-all cursor-pointer shadow-sm hover:border-text-muted/20"
             />
           </div>
         </div>

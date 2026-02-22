@@ -60,7 +60,7 @@ export default function TradeSimulator({ ticker, currentPrice, dates, prices }: 
   };
 
   return (
-    <div className="clean-card p-6 bg-surface border border-border-subtle rounded-3xl relative overflow-hidden">
+    <div className="clean-card p-6 bg-surface border border-border-subtle rounded-[20px] relative overflow-hidden">
       {success && (
         <div className="absolute inset-0 bg-emerald-500/10 backdrop-blur-sm flex items-center justify-center z-10 animate-entrance">
           <div className="flex flex-col items-center gap-2">
@@ -103,7 +103,7 @@ export default function TradeSimulator({ ticker, currentPrice, dates, prices }: 
               <select
                 value={selectedDate}
                 onChange={handleDateChange}
-                className="w-full bg-bg-main border border-border-subtle rounded-xl py-3 pl-9 pr-4 text-text-primary font-bold focus:outline-none focus:border-brand transition-colors appearance-none"
+                className="w-full bg-bg-main border border-border-subtle rounded-lg py-3 pl-9 pr-4 text-text-primary font-bold focus:outline-none focus:border-brand transition-colors appearance-none"
               >
                 {/* Add 'Today' option manually if needed, or rely on passed dates */}
                  <option value={new Date().toISOString().split("T")[0]}>Today (Live Price)</option>
@@ -126,7 +126,7 @@ export default function TradeSimulator({ ticker, currentPrice, dates, prices }: 
                 type="number"
                 value={customPrice}
                 onChange={(e) => setCustomPrice(Number(e.target.value))}
-                className="w-full bg-bg-main border border-border-subtle rounded-xl py-3 pl-9 pr-4 text-text-primary font-bold focus:outline-none focus:border-brand transition-colors"
+                className="w-full bg-bg-main border border-border-subtle rounded-lg py-3 pl-9 pr-4 text-text-primary font-bold focus:outline-none focus:border-brand transition-colors"
               />
             </div>
           </div>
@@ -150,7 +150,7 @@ export default function TradeSimulator({ ticker, currentPrice, dates, prices }: 
            <button
             onClick={executeTrade}
             disabled={loading || amount <= 0}
-            className="w-full mt-6 bg-brand text-white font-black text-sm uppercase tracking-widest py-4 rounded-xl hover:opacity-90 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-[var(--card-shadow)] hover:shadow-[var(--card-shadow-hover)]"
+            className="w-full mt-6 bg-brand text-white font-black text-sm uppercase tracking-widest py-4 rounded-lg hover:opacity-90 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-[var(--card-shadow)] hover:shadow-[var(--card-shadow-hover)]"
            >
              {loading ? <Loader2 className="animate-spin" size={20} /> : "Execute Paper Trade"}
            </button>

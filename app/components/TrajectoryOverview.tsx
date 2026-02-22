@@ -1,5 +1,7 @@
 "use client";
 
+import { getScoreColor, getBadgeStyles, formatState } from "@/lib/designUtils";
+
 type TrajectoryOverviewProps = {
   ticker: string;
   total: { total: number; state: string };
@@ -9,31 +11,30 @@ type TrajectoryOverviewProps = {
   capitalEfficiency: { score: number; state: string };
 };
 
-function getScoreColor(score: number) {
-  if (score >= 1) return "text-emerald-500 dark:text-emerald-400";
-  if (score <= -1) return "text-rose-500 dark:text-rose-400";
-  return "text-text-muted";
-}
-
-function getBadgeStyles(state: string) {
-  const s = state.toLowerCase();
-  if (s.includes("compounder") || s.includes("positive") || s.includes("elite"))
-    return "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-500/20";
-  if (s.includes("deterioration") || s.includes("negative") || s.includes("weak"))
-    return "bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-500/20";
-  return "bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700";
-}
-
-function formatState(s: string) {
-  return s.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
 const pillarLabels: Record<string, string> = {
   growth: "Growth",
   operatingMargin: "Margins",
-  fcf: "Free Cash Flow",
-  capitalEfficiency: "Cap. Efficiency",
+  fcf: "FCF",
+  capitalEfficiency: "ROIC",
 };
+
+function PillarChip({ label, score }: { label: string; score: number }) {
+  const isPos = score >= 1;
+  const isNeg = score <= -1;
+
+  return (
+    <div className="flex flex-col items-center gap-1 p-2.5 rounded-lg bg-[var(--surface-raised)] border border-[var(--border-subtle)] hover:border-[var(--border-hover)] transition-all">
+      <span className={`score-display text-lg ${
+        isPos ? "text-emerald-400" : isNeg ? "text-rose-400" : "text-text-secondary"
+      }`}>
+        {score > 0 ? `+${score}` : score}
+      </span>
+      <span className="text-[9px] font-bold text-text-muted uppercase tracking-widest">
+        {label}
+      </span>
+    </div>
+  );
+}
 
 export default function TrajectoryOverview({
   ticker,
@@ -44,51 +45,34 @@ export default function TrajectoryOverview({
   capitalEfficiency,
 }: TrajectoryOverviewProps) {
   const pillars = { growth, operatingMargin, fcf, capitalEfficiency };
+  const isPos = total.total >= 1;
+  const isNeg = total.total <= -1;
 
   return (
-    <div className="clean-card mb-8">
-      <div className="flex flex-col xl:flex-row xl:items-center gap-8">
-        
-        {/* Hero Section: Ticker & Total Score */}
-        <div className="flex items-center gap-10">
-          <div className="flex flex-col">
-            <h1 className="text-7xl font-display font-black tracking-tighter text-text-primary leading-none">
-              {ticker}
-            </h1>
-            <div className="flex items-center gap-2 mt-4">
-              <div className="w-2 h-2 rounded-full bg-brand" />
-              <span className="text-[11px] font-black text-text-secondary uppercase tracking-widest">
-                Trajectory Analysis
-              </span>
-            </div>
+    <div className="gradient-card p-4">
+      <div className="relative z-10">
+        {/* Header: label + total score */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-1.5">
+            <div className="w-1 h-1 rounded-full bg-brand animate-pulse" />
+            <span className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Trajectory Analysis</span>
           </div>
-
-          <div className="h-16 w-px bg-border-subtle hidden sm:block" />
-
-          <div className="flex flex-col items-center min-w-[100px]">
-            <div className={`text-6xl font-display font-black tracking-tighter ${getScoreColor(total.total)}`}>
+          <div className="flex items-center gap-2">
+            <span className={`score-display text-xl ${
+              isPos ? "text-emerald-400" : isNeg ? "text-rose-400" : "text-text-secondary"
+            }`}>
               {total.total > 0 ? `+${total.total}` : total.total}
-            </div>
-            <div className={`mt-2 px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase border ${getBadgeStyles(total.state)} whitespace-nowrap`}>
+            </span>
+            <div className={`metric-pill ${getBadgeStyles(total.state)}`}>
               {formatState(total.state)}
             </div>
           </div>
         </div>
 
-        {/* Pillars Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 flex-1">
+        {/* Pillar chips - 2x2 grid */}
+        <div className="grid grid-cols-2 gap-1.5">
           {Object.entries(pillars).map(([key, pillar]) => (
-            <div
-              key={key}
-              className="flex flex-col items-center justify-center p-5 rounded-2xl bg-bg-main border border-border-subtle transition-all hover:bg-surface group/pillar"
-            >
-              <div className={`text-3xl font-display font-black tracking-tighter mb-1 ${getScoreColor(pillar.score)}`}>
-                {pillar.score > 0 ? `+${pillar.score}` : pillar.score}
-              </div>
-              <div className="text-[10px] font-bold text-text-secondary uppercase tracking-widest text-center">
-                {pillarLabels[key] ?? key}
-              </div>
-            </div>
+            <PillarChip key={key} label={pillarLabels[key] ?? key} score={pillar.score} />
           ))}
         </div>
       </div>

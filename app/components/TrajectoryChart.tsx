@@ -12,6 +12,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { Info, ChevronDown, ChevronUp } from "lucide-react";
+import { getScoreColor, formatState } from "@/lib/designUtils";
 
 type TrajectoryChartProps = {
   title: string;
@@ -22,15 +23,7 @@ type TrajectoryChartProps = {
   state?: string;
 };
 
-function getScoreColor(score: number) {
-  if (score >= 1) return "text-brand";
-  if (score <= -1) return "text-rose-600";
-  return "text-slate-400";
-}
 
-function formatState(s: string) {
-  return s.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
 
 const chartDescriptors: Record<string, any> = {
   "Growth Momentum": {
@@ -76,26 +69,24 @@ export default function TrajectoryChart({
     formatAsPercent ? `${(v * 100).toFixed(1)}%` : v.toFixed(3);
 
   return (
-    <div className="clean-card flex flex-col group/chart">
+    <div className="clean-card p-6 flex flex-col">
       <div className="flex justify-between items-start mb-6">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">
-              {title}
-            </span>
+            <span className="section-label">{title}</span>
             <button 
               onClick={() => setInfoOpen(!infoOpen)}
               className="text-text-muted hover:text-brand transition-colors"
             >
-              <Info size={14} />
+              <Info size={12} />
             </button>
           </div>
           {score !== undefined && state && (
-            <div className="flex items-center gap-2 mt-2">
-              <span className={`text-3xl font-display font-black tracking-tighter ${getScoreColor(score)}`}>
+            <div className="flex items-center gap-2 mt-1.5">
+              <span className={`score-display text-2xl ${getScoreColor(score)}`}>
                 {score > 0 ? `+${score}` : score}
               </span>
-              <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border border-border-subtle bg-bg-main text-text-muted`}>
+              <span className={`metric-pill ${getScoreColor(score).includes('emerald') ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : getScoreColor(score).includes('rose') ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' : 'bg-[var(--surface-raised)] text-text-muted border-[var(--border-subtle)]'}`}>
                 {formatState(state)}
               </span>
             </div>
@@ -104,15 +95,15 @@ export default function TrajectoryChart({
       </div>
 
       {info && (
-        <div className={`overflow-hidden transition-all duration-500 ease-in-out ${infoOpen ? "max-h-40 opacity-100 mb-8" : "max-h-0 opacity-0"}`}>
-          <div className="p-5 rounded-[20px] bg-bg-main border border-border-subtle text-sm">
-            <p className="text-text-secondary font-medium leading-relaxed mb-2">{info.description}</p>
-            <p className="text-text-muted text-xs italic">{info.measures}</p>
+        <div className={`overflow-hidden transition-all duration-300 ease-out ${infoOpen ? "max-h-40 opacity-100 mb-6" : "max-h-0 opacity-0"}`}>
+          <div className="p-4 rounded-xl bg-[var(--surface-raised)] border border-[var(--border-subtle)] text-sm">
+            <p className="text-text-secondary text-xs leading-relaxed mb-1">{info.description}</p>
+            <p className="text-text-muted text-[10px] italic">{info.measures}</p>
           </div>
         </div>
       )}
 
-      <div className="h-[240px] w-full">
+      <div className="h-[280px] w-full">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 10, right: 10, bottom: 0, left: -20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-border-subtle" vertical={false} />
@@ -133,10 +124,11 @@ export default function TrajectoryChart({
               contentStyle={{ 
                 backgroundColor: "var(--surface)", 
                 borderColor: "var(--border-subtle)",
-                borderRadius: "20px",
-                padding: "12px",
-                fontSize: "12px",
-                boxShadow: "var(--card-shadow)"
+                borderRadius: "12px",
+                padding: "10px 14px",
+                fontSize: "11px",
+                boxShadow: "var(--card-shadow-hover)",
+                border: "1px solid var(--border-subtle)"
               }}
               itemStyle={{ color: "var(--text-primary)", fontWeight: 700 }}
               labelStyle={{ color: "var(--text-muted)", fontWeight: 800, marginBottom: "4px", textTransform: "uppercase", fontSize: "10px" }}

@@ -133,16 +133,14 @@ const ValuationLagChart: React.FC<Props> = ({
   const verdict = getVerdict(bias);
 
   return (
-    <div className="clean-card animate-entrance">
+    <div className="clean-card p-6 animate-entrance">
       <div className="flex justify-between items-start mb-10">
         <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2 mb-1">
-            <TrendingUp size={16} className="text-brand" />
-            <span className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">
-              Valuation Statistics
-            </span>
+          <div className="section-label flex items-center gap-2 mb-2">
+            <TrendingUp size={12} />
+            <span>Valuation Statistics</span>
           </div>
-          <h3 className="text-3xl font-display font-black tracking-tighter text-text-primary">
+          <h3 className="text-xl font-display font-black tracking-tight text-text-primary">
             Asset Dynamics
           </h3>
           <p className="text-text-secondary text-sm font-medium mt-1">
@@ -150,8 +148,8 @@ const ValuationLagChart: React.FC<Props> = ({
           </p>
         </div>
 
-        <div className={`px-5 py-3 rounded-[20px] border ${verdict.bg} ${verdict.border} text-right flex flex-col justify-center`}>
-          <span className="block text-[10px] font-black text-text-muted uppercase tracking-widest mb-1">
+        <div className={`px-4 py-3 rounded-xl border ${verdict.bg} ${verdict.border} text-right flex flex-col justify-center`}>
+          <span className="block text-[9px] font-bold text-text-muted uppercase tracking-widest mb-1">
             Residual Verdict
           </span>
           <span className={`text-base font-black uppercase tracking-tight ${verdict.tint}`}>
@@ -186,10 +184,11 @@ const ValuationLagChart: React.FC<Props> = ({
               contentStyle={{
                 backgroundColor: "transparent",
                 borderColor: "var(--border-subtle)",
-                borderRadius: "20px",
-                padding: "16px",
-                fontSize: "12px",
-                boxShadow: "var(--card-shadow)",
+                borderRadius: "12px",
+                padding: "10px 14px",
+                fontSize: "11px",
+                boxShadow: "var(--card-shadow-hover)",
+                border: "1px solid var(--border-subtle)",
               }}
               itemStyle={{ fontWeight: 700, color: "var(--text-primary)" }}
               labelStyle={{ color: "var(--text-muted)", fontWeight: 800, marginBottom: "8px", textTransform: "uppercase", fontSize: "10px" }}
@@ -302,11 +301,12 @@ const ValuationLagChart: React.FC<Props> = ({
         </ResponsiveContainer>
       </div>
 
-      <div className="mt-12 p-6 bg-bg-main rounded-3xl border border-border-subtle group-hover:border-brand/20 transition-colors">
+      <div className="mt-12 p-6 bg-bg-main rounded-2xl border border-border-subtle transition-colors">
         <div className="flex gap-8 items-center">
           <div className="flex flex-col gap-1 min-w-[140px]">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">Analysis</span>
+              <div className="w-1.5 h-1.5 rounded-full bg-brand" />
+              <span className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Analysis</span>
             </div>
             <span className={`text-xl font-display font-black tracking-tight ${verdict.tint}`}>
               {bias.toFixed(2)}σ {bias < 0 ? "Undervalued" : "Overvalued"}

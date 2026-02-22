@@ -28,7 +28,7 @@ export default function GrowthDiagnostics({
   }));
 
   return (
-    <div className="clean-card" style={{ width: "100%", height: 400 }}>
+    <div className="clean-card p-6" style={{ width: "100%", height: 400 }}>
       <h2 className="text-xl font-display font-bold text-text-primary mb-6">Growth Momentum (YoY TTM)</h2>
 
       <ResponsiveContainer>

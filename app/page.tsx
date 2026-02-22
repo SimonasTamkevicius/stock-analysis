@@ -5,17 +5,11 @@ import SearchStock from "./components/SearchStock";
 
 export default function Home() {
   return (
-    <main className="max-w-7xl mx-auto px-6 py-12 space-y-12 mb-20 animate-entrance">
+    <main className="max-w-7xl mx-auto px-6 py-12 space-y-16 mb-20 animate-entrance">
 
       {/* ── Search ── */}
       <section>
-        <SectionHeader
-          title="Search"
-          description="Analyze any publicly traded company by entering its ticker symbol."
-        />
-        <div className="max-w-md">
-          <SearchStock />
-        </div>
+        <SearchStock />
       </section>
 
       {/* ── Coverage Universe ── */}

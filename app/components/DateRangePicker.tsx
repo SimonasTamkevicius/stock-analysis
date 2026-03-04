@@ -4,10 +4,10 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Calendar, ChevronRight } from "lucide-react";
 
 const RANGES = [
-  { label: "1Y", value: "4" },
-  { label: "3Y", value: "12" },
-  { label: "5Y", value: "20" },
-  { label: "MAX", value: "40" },
+  { label: "1Y", value: "1y" },
+  { label: "3Y", value: "3y" },
+  { label: "5Y", value: "5y" },
+  { label: "MAX", value: "max" },
 ];
 
 export default function DateRangePicker() {
@@ -15,7 +15,7 @@ export default function DateRangePicker() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   
-  const currentWindow = searchParams.get("window") || "12";
+  const currentPreset = searchParams.get("preset") || "3y";
   const startDate = searchParams.get("startDate") || "";
   const endDate = searchParams.get("endDate") || "";
 
@@ -25,15 +25,15 @@ export default function DateRangePicker() {
       if (value === null) params.delete(key);
       else params.set(key, value);
     });
-    // If we set custom dates, remove the preset window
+    // If we set custom dates, remove the preset
     if (newParams.startDate || newParams.endDate) {
-      params.delete("window");
+      params.delete("preset");
     }
     router.push(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
   const handlePresetChange = (value: string) => {
-    updateParams({ window: value, startDate: null, endDate: null });
+    updateParams({ preset: value, startDate: null, endDate: null });
   };
 
   return (
@@ -52,7 +52,7 @@ export default function DateRangePicker() {
               key={range.value}
               onClick={() => handlePresetChange(range.value)}
               className={`flex-1 py-2 px-4 rounded-lg text-[11px] font-bold tracking-tight transition-all duration-300 ${
-                currentWindow === range.value && !startDate && !endDate
+                currentPreset === range.value && !startDate && !endDate
                   ? "bg-brand text-white shadow-lg shadow-brand/20 scale-105"
                   : "text-text-muted hover:text-text-primary hover:bg-surface"
               }`}

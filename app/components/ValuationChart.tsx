@@ -23,6 +23,7 @@ type Props = {
   prices: number[];
   multipleLabel?: string;
   windowSize: number;
+  epsMonthly: number[];
 };
 
 type ChartDataPoint = {
@@ -35,6 +36,8 @@ type ChartDataPoint = {
   zFundamental: number;
   zResidual: number;
   bottomSignal: boolean;
+  eps: number;
+  zEps: number;
 };
 
 
@@ -45,6 +48,7 @@ const ValuationLagChart: React.FC<Props> = ({
   prices,
   multipleLabel = "EV / EBITDA",
   windowSize,
+  epsMonthly,
 }) => {
 
   const length = Math.min(
@@ -63,6 +67,7 @@ const ValuationLagChart: React.FC<Props> = ({
   const zPrices = calculateZScores(prices);
   const zLogMultiple = calculateZScores(logMultiple);
   const zFundamental = calculateZScores(fundamentalCompositeMonthly);
+  const zEps = calculateZScores(epsMonthly);
 
   // Regression residuals
   const residuals = rollingRegressionResiduals(
@@ -87,6 +92,8 @@ const ValuationLagChart: React.FC<Props> = ({
       zFundamental: zFundamental[i],
       zResidual: zResidual[i],
       bottomSignal: bottomSignal[i],
+      eps: epsMonthly[i],
+      zEps: zEps[i],
     });
   }
 
@@ -203,9 +210,9 @@ const ValuationLagChart: React.FC<Props> = ({
                   const rawPrice = payload.price;
                   return [`$${rawPrice?.toFixed(2)} (${sigmaStr})`, "Price"];
                 }
-                if (name === `${multipleLabel} (Log Z)`) {
-                  const rawMult = payload.evEbitda;
-                  return [`${rawMult?.toFixed(1)}x (${sigmaStr})`, multipleLabel];
+                if (name === `EPS (Z)`) {
+                  const rawEps = payload.eps;
+                  return [`$${rawEps?.toFixed(2)} (${sigmaStr})`, "Earnings Per Share"];
                 }
                 if (name === "Fundamentals (Z)") {
                   const rawFund = payload.fundamental;
@@ -247,16 +254,16 @@ const ValuationLagChart: React.FC<Props> = ({
               animationDuration={2000}
             />
 
-            {/* Log Multiple */}
+            {/* Earnings Per Share (Replaces Log Multiple visualization) */}
             <Line
               type="monotone"
-              dataKey="zLogMultiple"
+              dataKey="zEps"
               stroke="var(--color-brand)"
               strokeWidth={2}
               strokeOpacity={0.6}
               dot={false}
               activeDot={{ r: 4, fill: "var(--color-brand)", strokeWidth: 0 }}
-              name={`${multipleLabel} (Log Z)`}
+              name={`EPS (Z)`}
               animationDuration={2000}
             />
 

@@ -11,8 +11,11 @@ import CompanyFinancials from "@/lib/models/CompanyFinancials";
 import { NextResponse } from "next/server";
 import { safeNumber } from "@/lib/helpers/math";
 import { computeCompanyMetrics } from "@/lib/coreAnalysis";
-
-const WINDOW_SIZE = 12;
+import {
+  computeTimeWindow,
+  type Preset,
+  type TimeWindowInput,
+} from "@/lib/helpers/timeWindow";
 
 /* ─────────────────────────────────────────────
    Normalize Alpha Vantage Monthly Response
@@ -69,14 +72,12 @@ export async function GET(
     const { ticker } = await params;
     const upperTicker = ticker.toUpperCase();
 
-    // Parse dynamic parameters
+    // Parse query parameters
     const { searchParams } = new URL(req.url);
-    const windowParam = searchParams.get("window");
-    const startDateParam = searchParams.get("startDate"); // YYYY-MM
-    const endDateParam = searchParams.get("endDate");     // YYYY-MM
-    const refresh = searchParams.get("refresh") === "true";
-
-    const dynamicWindow = windowParam ? parseInt(windowParam, 10) : WINDOW_SIZE;
+    const presetParam = searchParams.get("preset") as Preset | null;
+    const startDateParam = searchParams.get("startDate");
+    const endDateParam = searchParams.get("endDate");
+    const refresh = searchParams.get("refresh");
 
     await connectToDatabase();
 
@@ -90,38 +91,63 @@ export async function GET(
     let monthlyPrices: { monthlyPrices: any[] };
 
     /* ─────────────────────────────────────────────
-       CACHE HIT
+       CACHE HIT OR PARTIAL REFRESH
     ───────────────────────────────────────────── */
 
-    if (cached && !refresh) {
-      console.log(`[cache hit] ${upperTicker}`);
+    if (cached && refresh !== "true") {
+      
+      // If refresh is "prices", we keep the cached financials but fetch new prices
+      if (refresh === "prices") {
+        console.log(`[partial refresh: prices] ${upperTicker}`);
+        incomeData = { quarterlyReports: cached.incomeStatements };
+        cashFlowData = { quarterlyReports: cached.cashFlowStatements };
+        balanceData = { quarterlyReports: cached.balanceSheets };
 
-      incomeData = { quarterlyReports: cached.incomeStatements };
-      cashFlowData = { quarterlyReports: cached.cashFlowStatements };
-      balanceData = { quarterlyReports: cached.balanceSheets };
-      monthlyPrices = {
-        monthlyPrices: cached.monthlyPrices ?? [],
-      };
+        const rawMonthly = await fetchMonthlyPrices(upperTicker);
+        if (isRateLimited(rawMonthly)) throw new Error("RATE_LIMIT");
+        
+        const normalizedMonthly = normalizeMonthlyPrices(rawMonthly);
+        monthlyPrices = { monthlyPrices: normalizedMonthly };
+
+        await CompanyFinancials.findOneAndUpdate(
+          { ticker: upperTicker },
+          {
+            $set: {
+              monthlyPrices: normalizedMonthly,
+              lastUpdated: new Date(),
+            },
+          }
+        );
+      } else {
+        // Full cache hit
+        console.log(`[cache hit] ${upperTicker}`);
+        incomeData = { quarterlyReports: cached.incomeStatements };
+        cashFlowData = { quarterlyReports: cached.cashFlowStatements };
+        balanceData = { quarterlyReports: cached.balanceSheets };
+        monthlyPrices = {
+          monthlyPrices: cached.monthlyPrices ?? [],
+        };
+      }
     }
 
     /* ─────────────────────────────────────────────
-       CACHE MISS
+       FULL CACHE MISS
     ───────────────────────────────────────────── */
 
     else {
-      console.log(`[cache miss] ${upperTicker}`);
+      console.log(`[cache miss / full refresh] ${upperTicker}`);
 
       incomeData = await fetchQuarterlyIncomeStatement(upperTicker);
       if (isRateLimited(incomeData)) throw new Error("RATE_LIMIT");
-      await new Promise((r) => setTimeout(r, 12000));
+      await new Promise((r) => setTimeout(r, 2000));
 
       cashFlowData = await fetchQuarterlyCashFlow(upperTicker);
       if (isRateLimited(cashFlowData)) throw new Error("RATE_LIMIT");
-      await new Promise((r) => setTimeout(r, 12000));
+      await new Promise((r) => setTimeout(r, 2000));
 
       balanceData = await fetchQuarterlyBalanceSheet(upperTicker);
       if (isRateLimited(balanceData)) throw new Error("RATE_LIMIT");
-      await new Promise((r) => setTimeout(r, 12000));
+      await new Promise((r) => setTimeout(r, 2000));
 
       const rawMonthly = await fetchMonthlyPrices(upperTicker);
       if (isRateLimited(rawMonthly)) throw new Error("RATE_LIMIT");
@@ -166,17 +192,50 @@ export async function GET(
       );
     }
 
-    const paramStartDate = startDateParam || searchParams.get("from");
-    const paramEndDate = endDateParam || searchParams.get("to");
+    /* ─────────────────────────────────────────────
+       RESOLVE TIME WINDOW
+    ───────────────────────────────────────────── */
+
+    const allPrices = monthlyPrices.monthlyPrices || [];
+    const availableStart = allPrices.length > 0 ? allPrices[0].date : undefined;
+    const availableEnd = allPrices.length > 0 ? allPrices[allPrices.length - 1].date : undefined;
+
+    // Build the time window input from query params
+    let timeWindowInput: TimeWindowInput;
+
+    if (presetParam) {
+      timeWindowInput = { preset: presetParam };
+    } else if (startDateParam && endDateParam) {
+      timeWindowInput = { startDate: startDateParam, endDate: endDateParam };
+    } else if (startDateParam) {
+      timeWindowInput = { startDate: startDateParam };
+    } else if (endDateParam) {
+      timeWindowInput = { endDate: endDateParam };
+    } else {
+      // Default: 3 year view
+      timeWindowInput = { preset: "3y" };
+    }
+
+    const { startDate: resolvedStart, endDate: resolvedEnd } = computeTimeWindow(
+      timeWindowInput,
+      availableStart,
+      availableEnd
+    );
+
+    /* ─────────────────────────────────────────────
+       COMPUTE METRICS
+       Full data is passed in — coreAnalysis handles
+       windowing AFTER monthly conversion to ensure
+       all arrays are aligned correctly.
+    ───────────────────────────────────────────── */
 
     const metrics = computeCompanyMetrics(
       incomeData,
       cashFlowData,
       balanceData,
       monthlyPrices,
-      dynamicWindow,
-      paramStartDate,
-      paramEndDate
+      resolvedStart,
+      resolvedEnd
     );
 
     const {
@@ -193,17 +252,16 @@ export async function GET(
       finalPrices,
       finalValMultiple,
       finalFundamental,
+      finalEps,
       revenueTTM,
       yoyGrowthTTM,
+      operatingIncomeTTM,
       marginsTTM,
+      fcfTTM,
       fcfMarginsTTM,
       roicTTM,
-      isProfitable,
-      multipleLabel,
-      filterToAnchorDate,
+      quarterlyDates,
     } = metrics;
-
-    let anchorDate = filterToAnchorDate;
 
     return NextResponse.json({
       raw: {
@@ -215,8 +273,8 @@ export async function GET(
       meta: {
         ticker: upperTicker,
         lastUpdated: new Date().toISOString(),
-        isAnchored: !!paramEndDate,
-        anchorDate
+        resolvedStartDate: resolvedStart,
+        resolvedEndDate: resolvedEnd,
       },
       trajectory: {
         growth: growthScore,
@@ -232,17 +290,20 @@ export async function GET(
         prices: finalPrices,
         evEBITDAMonthly: finalValMultiple,
         fundamentalCompositeMonthly: finalFundamental,
+        epsMonthly: finalEps,
       },
       series: {
+        quarterlyDates,
         revenueTTM,
         yoyGrowthTTM,
+        operatingIncomeTTM,
         marginsTTM,
+        fcfTTM,
         fcfMarginsTTM,
         roicTTM,
       },
       balanceSheetRisk,
       decisionEngineResult,
-      dynamicWindow,
     });
   } catch (err: any) {
     if (err.message === "RATE_LIMIT") {

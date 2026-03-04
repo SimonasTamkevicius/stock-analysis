@@ -68,11 +68,14 @@ const signalConfigs = {
   },
 };
 
+
+
 function ScoreRing({ score, signal }: { score: number; signal: string }) {
   const config = signalConfigs[signal as keyof typeof signalConfigs];
-  const pct = Math.max(0, Math.min(100, score * 100));
+  const displayScore = Math.round(score * 100);
+  const arcPct = Math.max(0, Math.min(100, Math.abs(score) * 100));
   const circumference = 2 * Math.PI * 58;
-  const offset = circumference - (pct / 100) * circumference;
+  const offset = circumference - (arcPct / 100) * circumference;
 
   return (
     <div className="relative w-20 h-20 flex items-center justify-center">
@@ -93,7 +96,7 @@ function ScoreRing({ score, signal }: { score: number; signal: string }) {
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className={`score-display text-base ${config.color}`}>
-          {pct.toFixed(0)}
+          {displayScore}
         </span>
         <span className="text-[7px] font-bold text-text-muted uppercase tracking-widest">Score</span>
       </div>
@@ -146,6 +149,7 @@ function BreakdownRow({
     </div>
   );
 }
+
 
 export default function DecisionEngineViz({ result, ticker }: DecisionEngineVizProps) {
   const config = signalConfigs[result.signal];
@@ -220,3 +224,4 @@ export default function DecisionEngineViz({ result, ticker }: DecisionEngineVizP
     </div>
   );
 }
+

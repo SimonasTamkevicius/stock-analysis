@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { connectToDatabase } from "@/lib/data/mongodb";
 import { computeCompanyMetrics } from "@/lib/coreAnalysis";
+import { computeTimeWindow } from "@/lib/helpers/timeWindow";
 
 export async function GET() {
     try {
@@ -11,11 +12,24 @@ export async function GET() {
         
         const results = companies.map((company) => {
             try {
+                const prices = company.monthlyPrices ?? [];
+                const availableStart = prices.length > 0 ? String(prices[0].date) : undefined;
+                const availableEnd = prices.length > 0 ? String(prices[prices.length - 1].date) : undefined;
+
+                // Default to 3Y window for the coverage universe
+                const { startDate: resolvedStart, endDate: resolvedEnd } = computeTimeWindow(
+                    { preset: "3y" },
+                    availableStart,
+                    availableEnd
+                );
+
                 const metrics = computeCompanyMetrics(
                     { quarterlyReports: company.incomeStatements },
                     { quarterlyReports: company.cashFlowStatements },
                     { quarterlyReports: company.balanceSheets },
-                    { monthlyPrices: company.monthlyPrices }
+                    { monthlyPrices: prices },
+                    resolvedStart,
+                    resolvedEnd
                 );
                 return {
                     ticker: company.ticker,

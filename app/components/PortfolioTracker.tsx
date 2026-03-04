@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Trash2, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { Trash2, ArrowUpRight, ArrowDownRight, RefreshCw } from "lucide-react";
 import VersoLoader from "./VersoLoader";
 
 type Trade = {
@@ -20,6 +20,7 @@ type Trade = {
 export default function PortfolioTracker() {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshingTickers, setRefreshingTickers] = useState<Set<string>>(new Set());
 
   const fetchTrades = () => {
     fetch("/api/simulation/trades")
@@ -42,6 +43,23 @@ export default function PortfolioTracker() {
       setTrades(trades.filter((t) => t._id !== id));
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleRefreshPrice = async (ticker: string) => {
+    setRefreshingTickers((prev) => new Set(prev).add(ticker));
+    try {
+      await fetch(`/api/company/${ticker}?refresh=prices`);
+      // Refresh trades to get updated prices
+      fetchTrades();
+    } catch (err) {
+      console.error("Failed to refresh price for " + ticker, err);
+    } finally {
+      setRefreshingTickers((prev) => {
+        const next = new Set(prev);
+        next.delete(ticker);
+        return next;
+      });
     }
   };
 
@@ -85,41 +103,60 @@ export default function PortfolioTracker() {
           </tr>
         </thead>
         <tbody className="divide-y divide-[var(--border-subtle)]">
-          {trades.map((trade) => (
-            <tr key={trade._id} className="group hover:bg-[var(--surface-raised)] transition-colors">
-              <td className="px-5 py-3.5">
-                <span className="text-sm font-bold text-text-primary bg-[var(--surface-raised)] border border-[var(--border-subtle)] px-2 py-0.5 rounded-md">
-                  {trade.ticker}
-                </span>
-              </td>
-              <td className="px-5 py-3.5 text-text-secondary text-xs">
-                <div>{new Date(trade.buyDate).toLocaleDateString()}</div>
-                <div className="text-[10px] text-text-muted">@ ${trade.buyPrice.toFixed(2)}</div>
-              </td>
-              <td className="px-5 py-3.5 text-right font-mono text-xs text-text-secondary">
-                ${trade.totalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-              </td>
-              <td className="px-5 py-3.5 text-right font-mono text-xs font-bold text-text-primary">
-                ${trade.currentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-              </td>
-              <td className="px-5 py-3.5 text-right">
-                <div className={`flex items-center justify-end gap-1 text-xs font-bold ${trade.gainLoss >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
-                  {trade.gainLoss >= 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-                  {Math.abs(trade.gainLossPercent).toFixed(1)}%
-                </div>
-              </td>
-              <td className="px-5 py-3.5 text-right">
-                <button
-                  onClick={() => handleDelete(trade._id)}
-                  className="p-1.5 hover:bg-rose-500/10 hover:text-rose-400 rounded-lg text-text-muted transition-colors opacity-0 group-hover:opacity-100"
-                >
-                  <Trash2 size={13} />
-                </button>
-              </td>
-            </tr>
-          ))}
+          {trades.map((trade) => {
+            const isRefreshing = refreshingTickers.has(trade.ticker);
+            return (
+              <tr key={trade._id} className="group hover:bg-[var(--surface-raised)] transition-colors">
+                <td className="px-5 py-3.5">
+                  <span className="text-sm font-bold text-text-primary bg-[var(--surface-raised)] border border-[var(--border-subtle)] px-2 py-0.5 rounded-md">
+                    {trade.ticker}
+                  </span>
+                </td>
+                <td className="px-5 py-3.5 text-text-secondary text-xs">
+                  <div>{new Date(trade.buyDate).toLocaleDateString()}</div>
+                  <div className="text-[10px] text-text-muted">@ ${trade.buyPrice.toFixed(2)}</div>
+                </td>
+                <td className="px-5 py-3.5 text-right font-mono text-xs text-text-secondary">
+                  ${trade.totalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                </td>
+                <td className="px-5 py-3.5 text-right font-mono text-xs font-bold text-text-primary">
+                  ${trade.currentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                </td>
+                <td className="px-5 py-3.5 text-right">
+                  <div className={`flex items-center justify-end gap-1 text-xs font-bold ${trade.gainLoss >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                    {trade.gainLoss >= 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+                    {Math.abs(trade.gainLossPercent).toFixed(1)}%
+                  </div>
+                </td>
+                <td className="px-5 py-3.5 text-right">
+                  <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => handleRefreshPrice(trade.ticker)}
+                      disabled={isRefreshing}
+                      className={`p-1.5 rounded-lg text-text-muted transition-colors ${
+                        isRefreshing 
+                          ? "cursor-not-allowed opacity-50" 
+                          : "hover:bg-brand/10 hover:text-brand"
+                      }`}
+                      title={`Refresh ${trade.ticker} price`}
+                    >
+                      <RefreshCw size={13} className={isRefreshing ? "animate-spin" : ""} />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(trade._id)}
+                      className="p-1.5 hover:bg-rose-500/10 hover:text-rose-400 rounded-lg text-text-muted transition-colors"
+                      title={`Delete ${trade.ticker} position`}
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
   );
 }
+

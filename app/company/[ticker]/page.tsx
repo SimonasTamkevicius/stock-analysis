@@ -7,6 +7,9 @@ import ValuationLagChart from "@/app/components/ValuationChart";
 import DateRangePicker from "@/app/components/DateRangePicker";
 import DecisionEngineViz from "@/app/components/DecisionEngineViz";
 import TradeSimulator from "@/app/components/TradeSimulator";
+import ExitMonitor from "@/app/components/ExitMonitor";
+import RawDataGraphs from "@/app/components/RawDataGraphs";
+import RefreshButton from "@/app/components/RefreshButton";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
@@ -15,15 +18,15 @@ export default async function CompanyPage({
   searchParams,
 }: {
   params: Promise<{ ticker: string }>;
-  searchParams: Promise<{ window?: string; startDate?: string; endDate?: string }>;
+  searchParams: Promise<{ preset?: string; startDate?: string; endDate?: string }>;
 }) {
   const { ticker } = await params;
-  const { window, startDate, endDate } = await searchParams;
+  const { preset, startDate, endDate } = await searchParams;
 
   return (
     <AsyncPageContent 
       ticker={ticker} 
-      window={window} 
+      preset={preset}
       startDate={startDate} 
       endDate={endDate} 
     />
@@ -32,17 +35,17 @@ export default async function CompanyPage({
 
 async function AsyncPageContent({ 
   ticker, 
-  window, 
+  preset,
   startDate, 
   endDate 
 }: { 
   ticker: string; 
-  window?: string; 
+  preset?: string;
   startDate?: string; 
   endDate?: string; 
 }) {
   const params = new URLSearchParams();
-  if (window) params.set("window", window);
+  if (preset) params.set("preset", preset);
   if (startDate) params.set("startDate", startDate);
   if (endDate) params.set("endDate", endDate);
 
@@ -75,14 +78,17 @@ async function AsyncPageContent({
 
   return (
     <main className="max-w-7xl mx-auto px-6 pt-2 pb-16 animate-entrance">
-      {/* Back link */}
-      <Link
-        href="/"
-        className="inline-flex items-center gap-1.5 text-text-muted hover:text-brand transition-colors text-[10px] font-bold uppercase tracking-widest group"
-      >
-        <ArrowLeft size={11} className="group-hover:-translate-x-1 transition-transform" />
-        Universe
-      </Link>
+      {/* Top Bar Navigation */}
+      <div className="flex items-center justify-between mb-2">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 text-text-muted hover:text-brand transition-colors text-[10px] font-bold uppercase tracking-widest group"
+        >
+          <ArrowLeft size={11} className="group-hover:-translate-x-1 transition-transform" />
+          Stock-Universe
+        </Link>
+        <RefreshButton />
+      </div>
 
       {/* ── Hero: Decision Engine ── */}
       {data.decisionEngineResult && (
@@ -96,12 +102,13 @@ async function AsyncPageContent({
         {/* Left Column (Charts & Trading) */}
         <div className="lg:col-span-2 space-y-4">
           <ValuationLagChart
-            dates={valuation?.dates || []}
-            evEBITDAMonthly={valuation?.evEBITDAMonthly || []}
-            fundamentalCompositeMonthly={valuation?.fundamentalCompositeMonthly || []}
-            prices={valuation?.prices || []}
-            multipleLabel={valuation?.multipleLabel}
-            windowSize={data.dynamicWindow || 36}
+            dates={valuation.dates}
+            prices={valuation.prices}
+            evEBITDAMonthly={valuation.evEBITDAMonthly}
+            fundamentalCompositeMonthly={valuation.fundamentalCompositeMonthly}
+            epsMonthly={valuation.epsMonthly || []}
+            multipleLabel={data.multipleLabel}
+            windowSize={12}
           />
           
           <TradeSimulator 
@@ -155,6 +162,14 @@ async function AsyncPageContent({
         {/* Right Column (Sidebar Panels) */}
         <div className="space-y-4">
           <DateRangePicker />
+          <ExitMonitor
+            ticker={ticker}
+            currentPrice={valuation?.prices ? valuation.prices[valuation.prices.length - 1] : 0}
+            monthlyPrices={(valuation?.prices || []).map(Number)}
+            yoyGrowthTTM={(data.series?.yoyGrowthTTM || []).map(Number)}
+            stockMultiple={valuation?.evEBITDAMonthly ? valuation.evEBITDAMonthly[valuation.evEBITDAMonthly.length - 1] : 0}
+            sellSignal={data.decisionEngineResult?.sellSignal}
+          />
           {quality && <QualityPanel quality={quality} />}
           {risk && <BalanceSheetRisk risk={risk} />}
           {trajectory?.total && (
@@ -169,6 +184,17 @@ async function AsyncPageContent({
           )}
         </div>
       </div>
+
+      {/* ── Bottom Section: Raw TTM Data ── */}
+      {data.series && data.series.quarterlyDates && (
+        <RawDataGraphs
+          dates={data.series.quarterlyDates}
+          revenueTTM={data.series.revenueTTM || []}
+          operatingIncomeTTM={data.series.operatingIncomeTTM || []}
+          fcfTTM={data.series.fcfTTM || []}
+          roicTTM={data.series.roicTTM || []}
+        />
+      )}
     </main>
   );
 }

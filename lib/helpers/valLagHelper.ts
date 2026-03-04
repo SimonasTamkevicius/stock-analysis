@@ -6,7 +6,7 @@ export function buildMonthlyEV(
   balanceData: any
 ): number[] {
 
-  const bs = balanceData.quarterlyReports.reverse();
+  const bs = [...balanceData.quarterlyReports].reverse();
 
   if (!bs?.length) return [];
 

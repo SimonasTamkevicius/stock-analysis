@@ -2,7 +2,6 @@ import TrajectoryOverview from "@/app/components/TrajectoryOverview";
 import TrajectoryChart from "@/app/components/TrajectoryChart";
 import QualityPanel from "@/app/components/QualityPanel";
 import BalanceSheetRisk from "@/app/components/BalanceSheetRisk";
-import SectionHeader from "@/app/components/SectionHeader";
 import ValuationLagChart from "@/app/components/ValuationChart";
 import DateRangePicker from "@/app/components/DateRangePicker";
 import DecisionEngineViz from "@/app/components/DecisionEngineViz";

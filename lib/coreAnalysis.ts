@@ -173,7 +173,13 @@ export function computeCompanyMetrics(
      PHASE 3: Apply time window to QUARTERLY arrays
   ═══════════════════════════════════════════════ */
 
-  const qStartIdx = allQuarterlyDates.findIndex((d: string) => d >= resolvedStart);
+  // Pad start back by ~1 quarter so a "1y" window always captures 4 full quarters
+  const paddedStart = (() => {
+    const d = new Date(resolvedStart);
+    d.setDate(d.getDate() - 93);
+    return d.toISOString().split("T")[0];
+  })();
+  const qStartIdx = allQuarterlyDates.findIndex((d: string) => d >= paddedStart);
   const qEndIdx = findLastIndex(allQuarterlyDates, (d: string) => d <= resolvedEnd);
 
   const qSliceStart = qStartIdx === -1 ? 0 : qStartIdx;

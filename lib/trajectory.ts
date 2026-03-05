@@ -1,4 +1,4 @@
-import { buildRegressionLine, calculateSlope } from "./helpers/slopeCalculation";
+import { buildRegressionLine, calculateSlope, calculateSlopeV2, trendScore } from "./helpers/slopeCalculation";
 
 // Calculate the growth rate of the revenues
 export function calculateQoQGrowth(revenues: number[]) {
@@ -34,21 +34,17 @@ export function scoreGrowthMomentum(growthRates: number[], windowSize: number) {
   if (growthRates.length < 3) {
     return {
       slope: 0,
+      r2: 0,
       score: 0,
       state: "insufficient-data",
     };
   }
 
-  const slope = calculateSlope(growthRates);
+  const { slope, r2 } = calculateSlopeV2(growthRates);
   const regressionLine = buildRegressionLine(growthRates, slope);
 
-  let score = 0;
-
-  if (slope > 0.01) score = 2;
-  else if (slope > 0.005) score = 1;
-  else if (slope < -0.01) score = -2;
-  else if (slope < -0.005) score = -1;
-  else score = 0;
+  const rawTrend = trendScore(slope, r2, 0.01);
+  const score = Math.round(rawTrend * 2); // maps [-1,+1] → [-2,+2]
 
   let state = "neutral";
 
@@ -59,6 +55,7 @@ export function scoreGrowthMomentum(growthRates: number[], windowSize: number) {
 
   return {
     slope,
+    r2,
     score,
     state,
     regressionLine,
@@ -80,39 +77,26 @@ export function scoreMarginDynamics(margins: number[]) {
   if (margins.length < 3) {
     return {
       score: 0,
+      r2: 0,
       state: "insufficient-data",
       slope: 0,
     };
   }
-
-  const slope = calculateSlope(margins);
+  
+  const {slope, r2} = calculateSlopeV2(margins);
   const regressionLine = buildRegressionLine(margins, slope);
 
-  const epsilon = 0.005; // 0.5%
+  const rawScore = trendScore(slope, r2, 0.005);
+  const score = Math.round(rawScore); 
 
-  if (slope > epsilon) {
-    return {
-      score: 1,
-      state: "expanding",
-      slope,
-      regressionLine,
-      windowValues: margins,
-    };
-  }
-
-  if (slope < -epsilon) {
-    return {
-      score: -1,
-      state: "compressing",
-      slope,
-      regressionLine,
-      windowValues: margins,
-    };
-  }
+  let state = "stable";
+  if (score >= 1) state = "expanding";
+  else if (score <= -1) state = "compressing";
 
   return {
-    score: 0,
-    state: "stable",
+    score,
+    r2,
+    state,
     slope,
     regressionLine,
     windowValues: margins,
@@ -135,13 +119,12 @@ export function scoreFCFTrajectory(fcfMargins: number[]) {
     return {
       score: 0,
       state: "insufficient-data",
+      r2: 0,
       slope: 0,
       regressionLine: [],
       windowValues: fcfMargins,
     };
   }
-
-  const epsilon = 0.005;
 
   const hadNegative = fcfMargins.some(m => m < 0);
 
@@ -159,13 +142,17 @@ export function scoreFCFTrajectory(fcfMargins: number[]) {
     return true;
   })();
 
-  const slope = calculateSlope(fcfMargins);
+  const {slope, r2} = calculateSlopeV2(fcfMargins);
   const regressionLine = buildRegressionLine(fcfMargins, slope);
+
+  const rawScore = trendScore(slope, r2, 0.005);
+  const score = Math.round(rawScore) // round the raw value to -1, 0, or 1
 
   // Persistent Flip Detection
   if (hadNegative && lastTwoPositive && noReversionAfterPositive) {
     return {
       score: 2,
+      r2,
       state: "persistent-inflection",
       slope: 0,
       regressionLine,
@@ -173,35 +160,19 @@ export function scoreFCFTrajectory(fcfMargins: number[]) {
     };
   }
 
-  // Otherwise evaluate slope
-
-  if (slope > epsilon) {
-    return {
-      score: 1,
-      state: "improving",
-      slope,
-      regressionLine,
-      windowValues: fcfMargins,
-    };
-  }
-
-  if (slope < -epsilon) {
-    return {
-      score: -1,
-      state: "deteriorating",
-      slope,
-      regressionLine,
-      windowValues: fcfMargins,
-    };
-  }
-
+  let state = "";
+  if (score >= 1) state = "improving";
+  else if (score <= -1) state = "deteriorating";
+  else state = "stable";
+  
   return {
-    score: 0,
-    state: "stable",
+    score,
+    r2,
+    state,
     slope,
     regressionLine,
-    windowValues: fcfMargins,
-  };
+    windowValues: fcfMargins
+  }
 }
 
 // Calculate the incremental efficiency of the company
@@ -229,44 +200,32 @@ export function scoreCapitalEfficiency(efficiencies: number[]) {
   if (efficiencies.length < 2) {
     return {
       score: 0,
+      r2: 0,
       state: "insufficient-data",
       slope: 0,
       regressionLine: [],
     };
   }
 
-  const slope = calculateSlope(efficiencies);
+  const {slope, r2} = calculateSlopeV2(efficiencies);
   const regressionLine = buildRegressionLine(efficiencies, slope);
 
-  const epsilon = 0.01;
+  const rawScore = trendScore(slope, r2, 0.01);
+  const score = Math.round(rawScore);
 
-  if (slope > epsilon) {
-    return {
-      score: 1,
-      state: "improving",
-      slope,
-      regressionLine,
-      windowValues: efficiencies,
-    };
-  }
-
-  if (slope < -epsilon) {
-    return {
-      score: -1,
-      state: "deteriorating",
-      slope,
-      regressionLine,
-      windowValues: efficiencies,
-    };
-  }
+  let state = "";
+  if (score >= 1) state = "improving";
+  else if (score <= -1) state = "deteriorating";
+  else state = "stable";
 
   return {
-    score: 0,
-    state: "stable",
+    score,
+    r2, 
+    state,
     slope,
     regressionLine,
-    windowValues: efficiencies,
-  };
+    windowValues: efficiencies
+  }
 }
 
 // Calculate total trajectory strength

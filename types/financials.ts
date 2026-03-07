@@ -36,4 +36,6 @@ export interface ValuationLagDiagnostics {
     | "overvalued"
     | "significant-overvaluation";
   bottomSignal: boolean[];
+  zResidualSeries: number[];
+  smoothedZSeries: number[];
 }

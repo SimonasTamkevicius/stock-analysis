@@ -107,7 +107,8 @@ async function AsyncPageContent({
             fundamentalCompositeMonthly={valuation.fundamentalCompositeMonthly}
             epsMonthly={valuation.epsMonthly || []}
             multipleLabel={data.multipleLabel}
-            windowSize={12}
+            zResidualSeries={valuation.zResidualSeries || []}
+            bottomSignalSeries={valuation.bottomSignal || []}
           />
           
           <TradeSimulator 

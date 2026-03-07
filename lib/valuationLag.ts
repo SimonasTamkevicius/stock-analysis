@@ -1,5 +1,5 @@
 import { ValuationLagDiagnostics } from "@/types/financials";
-import { applyRollingWindow, calculateZScores, rollingZScore } from "./helpers/math";
+import { applyRollingWindow, calculateZScores, exponentialSmooth, rollingZScore } from "./helpers/math";
 import { calculateSlope } from "./helpers/slopeCalculation";
 import { detectResidualBottoms, rollingRegressionResiduals } from "./helpers/valLagHelper";
 
@@ -26,7 +26,9 @@ export function computeValuationLag(
   // Rolling z-score of residuals (true decoupling signal)
   const zResidual = rollingZScore(residuals, windowSize);
   const bottomSignal = detectResidualBottoms(zResidual);
-  const rawBias = zResidual[zResidual.length - 1];
+  const lambda = 0.3; // you can tune this
+  const smoothedZ = exponentialSmooth(zResidual, lambda);
+  const rawBias = smoothedZ[smoothedZ.length - 1];
 
   // Trend confirmation (light weighting)
   const multipleSlope = calculateSlope(logMultiple);
@@ -56,6 +58,8 @@ export function computeValuationLag(
     score: adjustedBias,
     state,
     multipleLabel,
-    bottomSignal
+    bottomSignal,
+    zResidualSeries: zResidual,
+    smoothedZSeries: smoothedZ,
   };
 }

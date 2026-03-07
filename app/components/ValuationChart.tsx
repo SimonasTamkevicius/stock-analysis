@@ -13,8 +13,7 @@ import {
   ReferenceLine,
 } from "recharts";
 import { TrendingUp, DollarSign } from "lucide-react";
-import { calculateZScores, rollingZScore } from "@/lib/helpers/math";
-import { detectResidualBottoms, rollingRegressionResiduals } from "@/lib/helpers/valLagHelper";
+import { calculateZScores } from "@/lib/helpers/math";
 
 type Props = {
   dates: string[];
@@ -22,8 +21,9 @@ type Props = {
   fundamentalCompositeMonthly: number[];
   prices: number[];
   multipleLabel?: string;
-  windowSize: number;
   epsMonthly: number[];
+  zResidualSeries: number[];
+  bottomSignalSeries: boolean[];
 };
 
 type ChartDataPoint = {
@@ -47,8 +47,9 @@ const ValuationLagChart: React.FC<Props> = ({
   fundamentalCompositeMonthly,
   prices,
   multipleLabel = "EV / EBITDA",
-  windowSize,
   epsMonthly,
+  zResidualSeries,
+  bottomSignalSeries,
 }) => {
 
   const length = Math.min(
@@ -69,15 +70,8 @@ const ValuationLagChart: React.FC<Props> = ({
   const zFundamental = calculateZScores(fundamentalCompositeMonthly);
   const zEps = calculateZScores(epsMonthly);
 
-  // Regression residuals
-  const residuals = rollingRegressionResiduals(
-    fundamentalCompositeMonthly,
-    logMultiple,
-    windowSize
-  );
-
-  const zResidual = rollingZScore(residuals, windowSize);
-  const bottomSignal = detectResidualBottoms(zResidual);
+  // z-residual and bottom signals come pre-computed from the scoring module
+  // (computed on FULL data with 60-month rolling lookback — stable across any display window)
 
   const data: ChartDataPoint[] = [];
 
@@ -90,8 +84,8 @@ const ValuationLagChart: React.FC<Props> = ({
       zPrice: zPrices[i],
       zLogMultiple: zLogMultiple[i],
       zFundamental: zFundamental[i],
-      zResidual: zResidual[i],
-      bottomSignal: bottomSignal[i],
+      zResidual: zResidualSeries[i],
+      bottomSignal: bottomSignalSeries[i],
       eps: epsMonthly[i],
       zEps: zEps[i],
     });

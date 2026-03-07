@@ -73,3 +73,32 @@ export function rollingZScore(values: number[], window: number) {
 
   return result;
 }
+
+export function exponentialSmooth(values: number[], lambda: number) {
+  const result = new Array(values.length).fill(0);
+
+  let prev: number | null = null;
+
+  for (let i = 0; i < values.length; i++) {
+    const v = values[i];
+
+    // Non‑finite → carry previous, don't inject zero
+    if (!Number.isFinite(v)) {
+      result[i] = prev ?? 0;
+      continue;
+    }
+
+    const x = v as number; // we know it's finite here
+
+    if (prev === null) {
+      // initialize with first finite value
+      prev = x;
+    } else {
+      prev = lambda * x + (1 - lambda) * prev;
+    }
+
+    result[i] = prev;
+  }
+
+  return result;
+}

@@ -214,13 +214,48 @@ export function computeCompanyMetrics(
     capitalResult.score
   );
 
-  const valuationLag = computeValuationLag(
-    finalPrices,
-    finalValMultiple,
-    finalFundamental,
-    Math.max(12, finalPrices.length),
+  // ── Valuation Lag: fixed 60-month rolling lookback, decoupled from display window ──
+  // The regression and z-score always use a 60-month rolling window regardless of
+  // the user's display window. This ensures:
+  //   1. Regime relevance (no stale data from 10+ years ago)
+  //   2. Backtest stability (same date → same z-residual regardless of display window)
+  //   3. Statistical soundness (always ≥12 points, ideally 60)
+  const VALUATION_LOOKBACK_MONTHS = 60;
+
+  const fullValuation = computeValuationLag(
+    allPrices,
+    allValMultipleMonthly,
+    allFundamentalMonthly,
+    VALUATION_LOOKBACK_MONTHS,
     multipleLabel
   );
+
+  // Slice the z-residual series to the display window (same indices as other monthly arrays)
+  const windowedZResidual = fullValuation.zResidualSeries.slice(sliceStart, sliceEnd);
+   const windowedSmoothedZ = fullValuation.smoothedZSeries.slice(sliceStart, sliceEnd);
+  const windowedBottomSignal = fullValuation.bottomSignal.slice(sliceStart, sliceEnd);
+
+  // Re-derive score and state from the windowed end-point (using smoothed z)
+  const windowEndZ = windowedSmoothedZ[windowedSmoothedZ.length - 1] || 0;
+  const slopeDivergence = fullValuation.fundamentalSlope - fullValuation.multipleSlope;
+  const adjustedWindowBias = windowEndZ * (1 + 0.15 * slopeDivergence);
+
+  type ValuationState = "significant-undervaluation" | "undervalued" | "fair-value" | "overvalued" | "significant-overvaluation";
+  let valuationState: ValuationState;
+  if (adjustedWindowBias < -1.5) valuationState = "significant-undervaluation";
+  else if (adjustedWindowBias < -0.5) valuationState = "undervalued";
+  else if (adjustedWindowBias > 1.5) valuationState = "significant-overvaluation";
+  else if (adjustedWindowBias > 0.5) valuationState = "overvalued";
+  else valuationState = "fair-value";
+
+  const valuationLag = {
+    ...fullValuation,
+    score: adjustedWindowBias,
+    state: valuationState,
+    zResidualSeries: windowedZResidual,
+    smoothedZSeries: windowedSmoothedZ,
+    bottomSignal: windowedBottomSignal,
+  };
 
   const structuralQuality = calculateStructuralQuality({
     roicTTM,

@@ -71,7 +71,7 @@ const ValuationLagChart: React.FC<Props> = ({
   const zEps = calculateZScores(epsMonthly);
 
   // z-residual and bottom signals come pre-computed from the scoring module
-  // (computed on FULL data with 60-month rolling lookback — stable across any display window)
+  // (computed on FULL data with 24-month rolling window — stable across any display window)
 
   const data: ChartDataPoint[] = [];
 
@@ -240,7 +240,7 @@ const ValuationLagChart: React.FC<Props> = ({
             <Line
               type="monotone"
               dataKey="zPrice"
-              stroke="var(--text-muted)"
+              stroke="pink"
               strokeWidth={2}
               dot={false}
               activeDot={{ r: 4, fill: "var(--text-muted)", strokeWidth: 0 }}
@@ -252,7 +252,7 @@ const ValuationLagChart: React.FC<Props> = ({
             <Line
               type="monotone"
               dataKey="zEps"
-              stroke="var(--color-brand)"
+              stroke="#8B5CF6"
               strokeWidth={2}
               strokeOpacity={0.6}
               dot={false}

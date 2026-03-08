@@ -1,6 +1,20 @@
 @import "tailwindcss";
 
 @theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-border-subtle: var(--border-subtle);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --radius-xl: var(--radius);
+
   --color-brand: #0047FF;
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-display: "SF Pro Display", "Inter", sans-serif;
@@ -9,40 +23,24 @@
 
 @layer base {
   :root {
-    --bg-main: #F5F5F7;
-    --surface: #FFFFFF;
-    --surface-raised: #FFFFFF;
-    --border-subtle: rgba(0, 0, 0, 0.06);
-    --border-hover: rgba(0, 0, 0, 0.12);
-    --text-primary: #1D1D1F;
-    --text-secondary: #6E6E73;
-    --text-muted: #AEAEB2;
-    --card-shadow: 0 0 0 1px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.04);
-    --card-shadow-hover: 0 0 0 1px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.08);
-    --glow-brand: 0 0 40px rgba(0, 71, 255, 0.08);
-    --glow-emerald: 0 0 40px rgba(16, 185, 129, 0.08);
-    --glow-rose: 0 0 40px rgba(244, 63, 94, 0.08);
-  }
-
-  :root.dark {
-    --bg-main: #09090B;
-    --surface: #111113;
-    --surface-raised: #18181B;
-    --border-subtle: rgba(255, 255, 255, 0.06);
-    --border-hover: rgba(255, 255, 255, 0.12);
-    --text-primary: #FAFAFA;
-    --text-secondary: #A1A1AA;
-    --text-muted: #52525B;
-    --card-shadow: 0 0 0 1px rgba(255, 255, 255, 0.03), 0 1px 2px rgba(0, 0, 0, 0.4);
-    --card-shadow-hover: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 8px 24px rgba(0, 0, 0, 0.5);
-    --glow-brand: 0 0 60px rgba(0, 71, 255, 0.15);
-    --glow-emerald: 0 0 60px rgba(16, 185, 129, 0.12);
-    --glow-rose: 0 0 60px rgba(244, 63, 94, 0.12);
+    --background: #F8F9FA;
+    --foreground: #2C3135;
+    --primary: #334155;
+    --primary-foreground: #FFFFFF;
+    --secondary: #9F5847;
+    --secondary-foreground: #FFFFFF;
+    --muted: #64748B;
+    --muted-foreground: #94A3B8;
+    --border: #E2E8F0;
+    --border-subtle: rgba(226, 232, 240, 0.6);
+    --card: #FFFFFF;
+    --card-foreground: #2C3135;
+    --radius: 1.5rem;
   }
 
   body {
-    background-color: var(--bg-main);
-    color: var(--text-primary);
+    background-color: var(--background);
+    color: var(--foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     letter-spacing: -0.01em;
@@ -53,8 +51,23 @@
   h1, h2, h3, h4 {
     font-family: var(--font-display);
     font-weight: 800;
-    color: var(--text-primary);
+    color: var(--foreground);
     letter-spacing: -0.03em;
+  }
+}
+
+@layer components {
+  .ws-card {
+    @apply bg-[var(--card)] border border-[var(--border-subtle)] rounded-[var(--radius)] p-8;
+  }
+  .ws-label {
+    @apply text-[10px] uppercase tracking-[0.2em] font-bold text-[var(--muted-foreground)] mb-1 block;
+  }
+  .ws-value {
+    @apply text-5xl font-black tracking-tight text-[var(--foreground)];
+  }
+  .ws-badge {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider border;
   }
 }
 

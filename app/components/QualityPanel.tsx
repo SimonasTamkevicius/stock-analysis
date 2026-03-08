@@ -109,11 +109,11 @@ export default function QualityPanel({ quality }: QualityPanelProps) {
             <div key={m.key}>
               <button
                 onClick={() => setOpenKey(isOpen ? null : m.key)}
-                className="w-full flex items-center justify-between py-3 px-3 -mx-3 rounded-xl hover:bg-[var(--surface-raised)] transition-colors group"
+                className="w-full flex items-center justify-between py-3 px-3 -mx-3 rounded-xl hover:bg---surface-raised transition-colors group"
               >
                 <div className="flex items-center gap-3">
                   <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-all ${
-                    isOpen ? "bg-brand text-white" : "bg-[var(--surface-raised)] border border-[var(--border-subtle)] text-text-muted"
+                    isOpen ? "bg-brand text-white" : "bg---surface-raised border border---border-subtle text-text-muted"
                   }`}>
                     <ChevronRight size={10} className={`transition-transform duration-200 ${isOpen ? "rotate-90" : ""}`} />
                   </div>
@@ -128,7 +128,7 @@ export default function QualityPanel({ quality }: QualityPanelProps) {
               </button>
 
               <div className={`overflow-hidden transition-all duration-300 ease-out ${isOpen ? "max-h-[300px] opacity-100 mb-3" : "max-h-0 opacity-0"}`}>
-                <div className="p-4 rounded-xl bg-[var(--surface-raised)] border border-[var(--border-subtle)] text-sm ml-8">
+                <div className="p-4 rounded-xl bg---surface-raised border border---border-subtle text-sm ml-8">
                   <p className="text-text-secondary text-xs leading-relaxed mb-4">{m.description}</p>
                   <div className="grid grid-cols-2 gap-1">
                     {m.thresholds.map((t, j) => (

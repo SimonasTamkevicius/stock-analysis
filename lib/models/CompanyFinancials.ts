@@ -6,6 +6,7 @@ export interface ICompanyFinancials {
   cashFlowStatements: Record<string, unknown>[];
   balanceSheets: Record<string, unknown>[];
   monthlyPrices: Record<string, unknown>[];
+  companyOverview: Record<string, unknown>;
   lastUpdated: Date;
   ttm: {
     revenue: number[];
@@ -32,6 +33,7 @@ const CompanyFinancialsSchema = new Schema({
   },
   lastUpdated: { type: Date, default: Date.now },
   monthlyPrices: { type: Array, default: [] },
+  companyOverview: { type: Object, default: {} },
 });
 
 const CompanyFinancials: Model<ICompanyFinancials> =

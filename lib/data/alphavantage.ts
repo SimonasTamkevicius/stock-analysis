@@ -46,3 +46,15 @@ export async function fetchMonthlyPrices(ticker: string) {
 
   return res.json();
 }
+
+export async function fetchCompanyOverview(ticker: string) {
+  const res = await fetch (
+    `https://www.alphavantage.co/query?function=OVERVIEW&symbol=${ticker}&apikey=${process.env.ALPHAVANTAGE_API_KEY}`
+  )
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch company overview!");
+  }
+
+  return res.json();
+}

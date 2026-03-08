@@ -214,13 +214,12 @@ export function computeCompanyMetrics(
     capitalResult.score
   );
 
-  // ── Valuation Lag: fixed 60-month rolling lookback, decoupled from display window ──
-  // The regression and z-score always use a 60-month rolling window regardless of
-  // the user's display window. This ensures:
-  //   1. Regime relevance (no stale data from 10+ years ago)
-  //   2. Backtest stability (same date → same z-residual regardless of display window)
-  //   3. Statistical soundness (always ≥12 points, ideally 60)
-  const VALUATION_LOOKBACK_MONTHS = 60;
+  // ── Valuation Lag: 24-month rolling window on FULL data, sliced to display window ──
+  // Regression + z-score always use a 24-month rolling window on the full dataset.
+  // This ensures:
+  //   1. Backtest stability (same date → same z-residual regardless of display window)
+  //   2. Sensitivity (24 months is short enough to detect divergences)
+  const VALUATION_LOOKBACK_MONTHS = 24;
 
   const fullValuation = computeValuationLag(
     allPrices,
@@ -230,13 +229,13 @@ export function computeCompanyMetrics(
     multipleLabel
   );
 
-  // Slice the z-residual series to the display window (same indices as other monthly arrays)
+  // Slice the z-residual series to the display window
   const windowedZResidual = fullValuation.zResidualSeries.slice(sliceStart, sliceEnd);
-   const windowedSmoothedZ = fullValuation.smoothedZSeries.slice(sliceStart, sliceEnd);
+  const windowedSmoothedZ = fullValuation.smoothedZSeries.slice(sliceStart, sliceEnd);
   const windowedBottomSignal = fullValuation.bottomSignal.slice(sliceStart, sliceEnd);
 
-  // Re-derive score and state from the windowed end-point (using smoothed z)
-  const windowEndZ = windowedSmoothedZ[windowedSmoothedZ.length - 1] || 0;
+  // Re-derive score and state from the windowed end-point
+  const windowEndZ = windowedZResidual[windowedZResidual.length - 1] || 0;
   const slopeDivergence = fullValuation.fundamentalSlope - fullValuation.multipleSlope;
   const adjustedWindowBias = windowEndZ * (1 + 0.15 * slopeDivergence);
 

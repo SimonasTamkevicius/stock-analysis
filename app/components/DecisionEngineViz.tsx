@@ -2,9 +2,11 @@
 
 import React from "react";
 import { Cpu, ShieldCheck, Zap, AlertTriangle, Scale, Activity, DollarSign } from "lucide-react";
+import { CompanyOverview } from "@/types/financials";
 
 interface DecisionEngineVizProps {
   ticker?: string;
+  companyOverview: CompanyOverview;
   result: {
     growth: number;
     structural: number;
@@ -42,7 +44,7 @@ const signalConfigs = {
   buy: {
     label: "Buy",
     color: "text-brand",
-    ring: "stroke-[var(--color-brand)]",
+    ring: "stroke---color-brand",
     glow: "shadow-brand/20",
     meshColor: "brand",
     icon: Zap,
@@ -51,7 +53,7 @@ const signalConfigs = {
   neutral: {
     label: "Neutral",
     color: "text-text-secondary",
-    ring: "stroke-[var(--text-muted)]",
+    ring: "stroke---text-muted",
     glow: "",
     meshColor: "brand",
     icon: Scale,
@@ -151,7 +153,7 @@ function BreakdownRow({
 }
 
 
-export default function DecisionEngineViz({ result, ticker }: DecisionEngineVizProps) {
+export default function DecisionEngineViz({ result, ticker, companyOverview }: DecisionEngineVizProps) {
   const config = signalConfigs[result.signal];
   const Icon = config.icon;
   const bd = result.breakdown;
@@ -177,9 +179,14 @@ export default function DecisionEngineViz({ result, ticker }: DecisionEngineVizP
           {/* Left: Ticker + Signal */}
           <div className="flex items-center gap-5 shrink-0">
             {ticker && (
-              <h1 className="text-4xl lg:text-5xl font-display font-black tracking-tighter text-text-primary leading-none">
-                {ticker}
-              </h1>
+              <div>
+                <h3 className="text-3xl lg:text-4xl font-display font-black tracking-tighter text-text-primary leading-none">
+                  {ticker}
+                </h3>
+                <h1 className="text-xl lg:text-2xl font-display font-black tracking-normal text-text-primary leading-none">
+                  {companyOverview.Name}
+                </h1>
+              </div>
             )}
             <div className="flex items-center gap-4">
               <ScoreRing score={result.finalScore} signal={result.signal} />

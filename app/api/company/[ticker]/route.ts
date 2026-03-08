@@ -3,6 +3,7 @@ import {
   fetchQuarterlyBalanceSheet,
   fetchQuarterlyCashFlow,
   fetchQuarterlyIncomeStatement,
+  fetchCompanyOverview
 } from "@/lib/data/alphavantage";
 
 import { connectToDatabase } from "@/lib/data/mongodb";
@@ -89,6 +90,7 @@ export async function GET(
     let cashFlowData: any;
     let balanceData: any;
     let monthlyPrices: { monthlyPrices: any[] };
+    let companyOverview: any;
 
     /* ─────────────────────────────────────────────
        CACHE HIT OR PARTIAL REFRESH
@@ -102,6 +104,7 @@ export async function GET(
         incomeData = { quarterlyReports: cached.incomeStatements };
         cashFlowData = { quarterlyReports: cached.cashFlowStatements };
         balanceData = { quarterlyReports: cached.balanceSheets };
+        companyOverview = {companyOverview: cached.companyOverview}
 
         const rawMonthly = await fetchMonthlyPrices(upperTicker);
         if (isRateLimited(rawMonthly)) throw new Error("RATE_LIMIT");
@@ -124,6 +127,7 @@ export async function GET(
         incomeData = { quarterlyReports: cached.incomeStatements };
         cashFlowData = { quarterlyReports: cached.cashFlowStatements };
         balanceData = { quarterlyReports: cached.balanceSheets };
+        companyOverview = cached.companyOverview;
         monthlyPrices = {
           monthlyPrices: cached.monthlyPrices ?? [],
         };
@@ -151,11 +155,16 @@ export async function GET(
 
       const rawMonthly = await fetchMonthlyPrices(upperTicker);
       if (isRateLimited(rawMonthly)) throw new Error("RATE_LIMIT");
+      await new Promise((r) => setTimeout(r, 2000));
+
+      companyOverview = await fetchCompanyOverview(upperTicker);
+      if (isRateLimited(companyOverview)) throw new Error("RATE_LIMIT");
 
       if (
         !incomeData?.quarterlyReports ||
         !cashFlowData?.quarterlyReports ||
         !balanceData?.quarterlyReports ||
+        !companyOverview ||
         !(rawMonthly?.["Monthly Adjusted Time Series"] || rawMonthly?.["Monthly Time Series"])
       ) {
         return NextResponse.json(
@@ -185,6 +194,7 @@ export async function GET(
             balanceSheets:
               balanceData.quarterlyReports,
             monthlyPrices: normalizedMonthly,
+            companyOverview: companyOverview,
             lastUpdated: new Date(),
           },
         },
@@ -264,6 +274,7 @@ export async function GET(
     } = metrics;
 
     return NextResponse.json({
+      companyOverview,
       raw: {
         incomeData,
         cashFlowData,

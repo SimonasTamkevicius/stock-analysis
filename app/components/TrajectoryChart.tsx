@@ -86,7 +86,7 @@ export default function TrajectoryChart({
               <span className={`score-display text-2xl ${getScoreColor(score)}`}>
                 {score > 0 ? `+${score}` : score}
               </span>
-              <span className={`metric-pill ${getScoreColor(score).includes('emerald') ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : getScoreColor(score).includes('rose') ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' : 'bg-[var(--surface-raised)] text-text-muted border-[var(--border-subtle)]'}`}>
+              <span className={`metric-pill ${getScoreColor(score).includes('emerald') ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : getScoreColor(score).includes('rose') ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' : 'bg---surface-raised text-text-muted border---border-subtle'}`}>
                 {formatState(state)}
               </span>
             </div>

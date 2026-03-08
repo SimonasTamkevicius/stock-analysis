@@ -290,9 +290,11 @@ export function rollingRegressionResiduals(
   const residuals: number[] = new Array(fundamentals.length).fill(NaN);
 
   for (let i = 0; i < fundamentals.length; i++) {
-    const startIndex = Math.max(0, i - windowSize + 1);
-    const fWindow = fundamentals.slice(startIndex, i + 1);
-    const mWindow = logMultiple.slice(startIndex, i + 1);
+    // Out-of-sample: fit regression on [startIndex, i-1], predict at i
+    // This produces genuine "surprise" residuals — the model hasn't seen point i
+    const startIndex = Math.max(0, i - windowSize);
+    const fWindow = fundamentals.slice(startIndex, i);
+    const mWindow = logMultiple.slice(startIndex, i);
 
     if (fWindow.length < 2) {
       residuals[i] = 0;
@@ -314,6 +316,7 @@ export function rollingRegressionResiduals(
     const beta = varF !== 0 ? cov / varF : 0;
     const alpha = meanM - beta * meanF;
 
+    // Predict at point i using model fit on prior data
     const predicted = alpha + beta * fundamentals[i];
     residuals[i] = logMultiple[i] - predicted;
   }

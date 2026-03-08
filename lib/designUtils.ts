@@ -4,8 +4,8 @@
 
 /** Score color: positive → emerald, negative → rose, neutral → muted */
 export function getScoreColor(score: number): string {
-  if (score >= 1) return "text-emerald-500";
-  if (score <= -1) return "text-rose-500";
+  if (score >= 1) return "text-emerald-400";
+  if (score <= -1) return "text-rose-400";
   return "text-text-muted";
 }
 
@@ -33,10 +33,10 @@ export function getBadgeStyles(state: string): string {
     s.includes("high-risk");
 
   if (isPositive)
-    return "bg-emerald-500/10 text-emerald-500 border-emerald-500/20";
+    return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
   if (isNegative)
-    return "bg-rose-500/10 text-rose-500 border-rose-500/20";
-  return "bg-surface text-text-muted border-border-subtle";
+    return "bg-rose-500/10 text-rose-400 border-rose-500/20";
+  return "bg-[var(--surface-raised)] text-text-muted border-border-subtle";
 }
 
 /** Metric value color: positive → emerald, negative → rose, neutral → amber */
@@ -47,12 +47,12 @@ export function getMetricColor(
   lowerIsBetter = false
 ): string {
   if (lowerIsBetter) {
-    if (v < goodThreshold) return "text-emerald-500";
-    if (v > badThreshold) return "text-rose-500";
+    if (v < goodThreshold) return "text-emerald-400";
+    if (v > badThreshold) return "text-rose-400";
     return "text-amber-500";
   }
-  if (v > goodThreshold) return "text-emerald-500";
-  if (v < badThreshold) return "text-rose-500";
+  if (v > goodThreshold) return "text-emerald-400";
+  if (v < badThreshold) return "text-rose-400";
   return "text-amber-500";
 }
 

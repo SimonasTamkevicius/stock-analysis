@@ -26,9 +26,15 @@ export function computeValuationLag(
   // Rolling z-score of residuals (true decoupling signal)
   const zResidual = rollingZScore(residuals, windowSize);
   const bottomSignal = detectResidualBottoms(zResidual);
-  const lambda = 0.3; // you can tune this
+
+  // Use the raw z-residual directly — no EMA smoothing.
+  // The rolling z-score already has inherent smoothing via its window.
+  // EMA with λ=0.3 added ~5-6 months of lag, making the score diverge from the chart.
+  const rawBias = zResidual[zResidual.length - 1] ?? 0;
+
+  // Keep smoothed series available for reference but don't use it for scoring
+  const lambda = 0.3;
   const smoothedZ = exponentialSmooth(zResidual, lambda);
-  const rawBias = smoothedZ[smoothedZ.length - 1];
 
   // Trend confirmation (light weighting)
   const multipleSlope = calculateSlope(logMultiple);
